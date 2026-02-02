@@ -1,5 +1,7 @@
 # CLAUDE.md — 403DesktopApp
 
+> See also: [Root CLAUDE.md](../../CLAUDE.md) for full repository overview including the Database API project.
+
 ## Project Overview
 
 Medical imaging desktop application with DICOM support and provider authentication.
