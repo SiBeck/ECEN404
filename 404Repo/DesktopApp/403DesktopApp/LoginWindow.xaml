@@ -1,0 +1,112 @@
+﻿<Window x:Class="_403DesktopApp.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Medical Provider Sign On" 
+        Height="600" Width="500"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F0F0F0">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#007ACC" Padding="20">
+            <StackPanel>
+                <TextBlock Text="BioMetrix Medical Imaging" 
+                           FontSize="24" 
+                           FontWeight="Bold" 
+                           Foreground="White"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Provider Sign On" 
+                           FontSize="14" 
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Login Form -->
+        <Border Grid.Row="1" 
+                Background="White" 
+                Margin="40"
+                Padding="30"
+                CornerRadius="5"
+                BorderBrush="#CCCCCC"
+                BorderThickness="1">
+            <StackPanel VerticalAlignment="Center">
+                <!-- Provider ID -->
+                <TextBlock Text="Provider ID:" 
+                           FontSize="14" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"/>
+                <TextBox Text="{Binding ProviderId, UpdateSourceTrigger=PropertyChanged}" 
+                         Height="35"
+                         FontSize="14"
+                         Padding="8"
+                         Margin="0,0,0,20"/>
+
+                <!-- Password -->
+                <TextBlock Text="Password:" 
+                           FontSize="14" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"/>
+                <PasswordBox x:Name="PasswordBox"
+                             Height="35"
+                             FontSize="14"
+                             Padding="8"
+                             Margin="0,0,0,10"
+                             PasswordChanged="PasswordBox_PasswordChanged"/>
+
+                <!-- Error Message -->
+                <TextBlock Text="{Binding ErrorMessage}" 
+                           Foreground="Red"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,20"
+                           MinHeight="20"/>
+
+                <!-- Buttons -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0"
+                            Content="Sign In" 
+                            Command="{Binding LoginCommand}"
+                            Height="40"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Background="#007ACC"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            IsDefault="True"/>
+
+                    <Button Grid.Column="2"
+                            Content="Cancel" 
+                            Command="{Binding CancelCommand}"
+                            Height="40"
+                            FontSize="14"
+                            Background="#E0E0E0"
+                            BorderThickness="0"
+                            Cursor="Hand"/>
+                </Grid>
+
+                <!-- Additional Info -->
+                <TextBlock Text="For assistance, contact IT Support: sibeck21@tamu.edu" 
+                           FontSize="11"
+                           Foreground="Gray"
+                           TextAlignment="Center"
+                           Margin="0,30,0,0"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

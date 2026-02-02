@@ -1,0 +1,6 @@
+@BioMetrixDatabase_HostAddress = http://localhost:5168
+
+GET {{BioMetrixDatabase_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
