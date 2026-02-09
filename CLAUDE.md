@@ -55,10 +55,11 @@ ECEN404/
 |-----------|----------|-----------|--------|-----|
 | Desktop App | C# | WPF | `net8.0-windows` | .NET 8 |
 | Backend API | C# | ASP.NET Core Web API | `net8.0` | .NET 8 |
+| Python ML/Analysis | Python 3.10+ | NumPy, scikit-image, pydicom, ML libs | — | Python.NET bridge |
 
 ## Build & Run
 
-**Prerequisites:** .NET 8 SDK. The desktop app requires Windows.
+**Prerequisites:** .NET 8 SDK, Python 3.10+ (with pip). The desktop app requires Windows.
 
 ### Desktop App
 
@@ -86,6 +87,28 @@ API launch profiles:
 - **HTTP:** `http://localhost:5168`
 - **HTTPS:** `https://localhost:7183`
 
+### Python Environment
+
+```bash
+# Create and activate a virtual environment (recommended)
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux/macOS
+source .venv/bin/activate
+
+# Install Python dependencies
+pip install -r requirements.txt
+```
+
+The Python runtime must be discoverable by Python.NET. Set `PYTHONNET_PYDLL` if the runtime is not on `PATH`:
+```bash
+# Windows example
+set PYTHONNET_PYDLL=C:\Python310\python310.dll
+# Linux example
+export PYTHONNET_PYDLL=/usr/lib/libpython3.10.so
+```
+
 ## Key Dependencies
 
 ### Desktop App (NuGet)
@@ -102,6 +125,23 @@ API launch profiles:
 | Package | Version | Purpose |
 |---------|---------|---------|
 | Swashbuckle.AspNetCore | 6.6.2 | Swagger/OpenAPI docs |
+
+### Python.NET Bridge (NuGet — to be added to Desktop App)
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| pythonnet | 3.0.* | Embed CPython in .NET; call Python from C# |
+
+### Python Dependencies (pip — `requirements.txt`)
+
+| Package | Purpose |
+|---------|---------|
+| numpy | Array operations, image matrix manipulation |
+| pydicom | Pure-Python DICOM parsing (complements fo-dicom on the Python side) |
+| scikit-image | Image processing filters, segmentation, morphology |
+| opencv-python | Computer vision primitives (optional, for advanced analysis) |
+| matplotlib | Plotting/visualization if headless rendering is needed |
+| *ML framework TBD* | Model inference (e.g. TensorFlow, PyTorch, ONNX Runtime) |
 
 ## Architecture
 
@@ -125,6 +165,164 @@ UI (XAML) ←→ ViewModel ←→ Services / Models
 - Controller-based routing (`[ApiController]`, `[Route("[controller]")]`)
 - Swagger enabled in Development environment
 - Currently contains only the default WeatherForecast template
+
+## Python.NET Integration
+
+### Overview
+
+The desktop app will use [Python.NET (pythonnet)](https://github.com/pythonnet/pythonnet) to bridge C#/.NET and Python. This enables calling Python-based image analysis, ML inference, and scientific computing libraries directly from the WPF application without a separate process or REST API.
+
+### Why Python.NET
+
+- **In-process execution** — Python runs inside the .NET process via the CPython embedding API. No subprocess spawning, no IPC serialization overhead.
+- **Direct object access** — C# code can import Python modules, call functions, and pass/receive NumPy arrays, DICOM pixel data, and ML model results as native Python objects.
+- **Ecosystem leverage** — Gives access to the full Python scientific stack (NumPy, scikit-image, pydicom, TensorFlow/PyTorch) without rewriting algorithms in C#.
+- **Single deployment** — The app ships as one WPF executable that initializes the Python runtime on startup.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  WPF Desktop App (.NET 8)                               │
+│                                                         │
+│  XAML Views ←→ ViewModels ←→ Services                   │
+│                                    │                    │
+│                              PythonService               │
+│                          (C# wrapper class)             │
+│                                    │                    │
+│                          ┌─────────┴─────────┐          │
+│                          │   Python.NET       │          │
+│                          │  (pythonnet 3.x)   │          │
+│                          └─────────┬─────────┘          │
+│                                    │                    │
+│                  ┌─────────────────┼──────────────────┐ │
+│                  │                 │                   │ │
+│           analysis.py      ml_inference.py     preprocessing.py │
+│          (scikit-image,    (TF/PyTorch/ONNX)   (NumPy, pydicom) │
+│           segmentation)                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Planned Directory Structure
+
+```
+404Repo/DesktopApp/403DesktopApp/
+├── Services/
+│   ├── AuthenticationServices.cs
+│   └── PythonService.cs           # NEW — Python.NET runtime manager
+├── PythonScripts/                 # NEW — Python modules called from C#
+│   ├── __init__.py
+│   ├── analysis.py                # Image analysis (filters, segmentation, measurements)
+│   ├── preprocessing.py           # DICOM pixel preprocessing, normalization
+│   └── ml_inference.py            # ML model loading and inference
+└── ...
+```
+
+### Integration Pattern
+
+**1. Runtime initialization** — `PythonService` initializes the Python engine once at app startup via `PythonEngine.Initialize()`. The GIL (Global Interpreter Lock) is managed per-call using `Py.GIL()`.
+
+```csharp
+// PythonService.cs — conceptual example
+using Python.Runtime;
+
+public class PythonService : IDisposable
+{
+    private static bool _initialized;
+
+    public void Initialize(string pythonDll, string scriptsPath)
+    {
+        if (_initialized) return;
+        Runtime.PythonDLL = pythonDll;           // path to python3x.dll/.so
+        PythonEngine.Initialize();
+        // Add PythonScripts/ to sys.path so modules are importable
+        using (Py.GIL())
+        {
+            dynamic sys = Py.Import("sys");
+            sys.path.append(scriptsPath);
+        }
+        _initialized = true;
+    }
+
+    public void Dispose()
+    {
+        if (_initialized) PythonEngine.Shutdown();
+    }
+}
+```
+
+**2. Calling Python from C#** — Acquire the GIL, import the module, call the function, convert the result back to .NET types.
+
+```csharp
+public double[] AnalyzeImage(byte[] pixelData, int width, int height)
+{
+    using (Py.GIL())
+    {
+        dynamic np = Py.Import("numpy");
+        dynamic analysis = Py.Import("analysis");
+
+        // Convert pixel data to NumPy array
+        PyObject npArray = np.frombuffer(pixelData, dtype: np.uint8)
+                             .reshape(height, width);
+
+        // Call Python analysis function
+        dynamic result = analysis.compute_metrics(npArray);
+
+        // Convert result back to C# types
+        return result.As<double[]>();
+    }
+}
+```
+
+**3. Python module pattern** — Each `.py` file exposes pure functions that accept NumPy arrays and return serializable results.
+
+```python
+# analysis.py — conceptual example
+import numpy as np
+from skimage import filters, measure
+
+def compute_metrics(image: np.ndarray) -> dict:
+    """Compute basic image metrics on a 2D grayscale array."""
+    return {
+        "mean": float(np.mean(image)),
+        "std": float(np.std(image)),
+        "min": int(np.min(image)),
+        "max": int(np.max(image)),
+    }
+
+def segment_regions(image: np.ndarray, threshold: float = None):
+    """Threshold and label connected regions."""
+    if threshold is None:
+        threshold = filters.threshold_otsu(image)
+    binary = image > threshold
+    labels = measure.label(binary)
+    return labels, measure.regionprops_table(labels, properties=["area", "centroid"])
+```
+
+### Key Conventions for Python.NET Code
+
+| Rule | Details |
+|------|---------|
+| GIL management | Always wrap Python calls in `using (Py.GIL()) { ... }` — never hold the GIL longer than needed |
+| Thread safety | Python.NET is single-threaded by default; run Python calls on a dedicated thread or use `await Task.Run(() => { using (Py.GIL()) { ... } })` to avoid blocking the UI thread |
+| Error handling | Catch `PythonException` in C# to surface Python tracebacks; log but do not expose raw tracebacks to end users |
+| Data marshalling | Pass pixel data as `byte[]` → NumPy via `np.frombuffer()`; return results as primitive types, lists, or dicts (avoid passing complex Python objects back to C#) |
+| Module location | All `.py` files go in `PythonScripts/`; add this directory to `sys.path` at initialization |
+| Python style | Follow PEP 8 in all `.py` files; use type hints; keep functions stateless and pure where possible |
+| Dependency management | Pin Python package versions in `requirements.txt`; document the required Python version (3.10+) |
+| Cleanup | Call `PythonEngine.Shutdown()` in the app's shutdown handler (`App.OnExit` or `PythonService.Dispose()`) |
+
+### Setup Checklist (for contributors)
+
+1. Install Python 3.10+ and ensure `python` / `python3` is on `PATH`
+2. Create a virtual environment: `python -m venv .venv` and activate it
+3. Install dependencies: `pip install -r requirements.txt`
+4. Add the `pythonnet` NuGet package to `403DesktopApp.csproj`:
+   ```xml
+   <PackageReference Include="pythonnet" Version="3.0.*" />
+   ```
+5. Set `PYTHONNET_PYDLL` environment variable if needed (points to `python3xx.dll` / `libpython3.xx.so`)
+6. Verify: build and run — `PythonService.Initialize()` should succeed without errors
 
 ## Code Conventions
 
@@ -199,6 +397,8 @@ Implementation details:
 - No unit tests, integration tests, or CI/CD pipeline
 - `Views/` folder is empty (reserved for future UserControls)
 - Backend API is still the default template — no real endpoints implemented
+- Python.NET integration not yet implemented — `PythonService`, `PythonScripts/`, and `requirements.txt` still need to be created
+- No `requirements.txt` or `.venv` setup yet for Python dependencies
 
 ## Git Workflow
 

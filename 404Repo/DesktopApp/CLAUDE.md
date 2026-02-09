@@ -11,6 +11,7 @@ WPF desktop client for medical imaging with DICOM support and provider authentic
 - **UI Framework:** WPF
 - **Architecture:** MVVM (Model-View-ViewModel)
 - **Solution:** `403DesktopApp.sln` → single project `403DesktopApp/403DesktopApp.csproj`
+- **Python bridge:** Python.NET (pythonnet 3.x) for ML/image analysis integration
 
 ## Directory Structure
 
@@ -34,12 +35,17 @@ DesktopApp/
     ├── ViewModels/
     │   ├── MainViewModel.cs           # DICOM viewer: load, zoom, pan, frame navigation
     │   └── LoginViewModel.cs          # Login validation and auth flow
-    └── Views/                         # Empty — reserved for future UserControls
+    ├── Views/                         # Empty — reserved for future UserControls
+    └── PythonScripts/                 # NEW — Python modules called via Python.NET
+        ├── __init__.py
+        ├── analysis.py                # Image analysis (filters, segmentation)
+        ├── preprocessing.py           # DICOM pixel preprocessing, normalization
+        └── ml_inference.py            # ML model loading and inference
 ```
 
 ## Build & Run
 
-**Prerequisites:** .NET 8 SDK (or Visual Studio 2022 with .NET 8 workload), Windows OS.
+**Prerequisites:** .NET 8 SDK (or Visual Studio 2022 with .NET 8 workload), Python 3.10+, Windows OS.
 
 ```bash
 # Build
@@ -59,6 +65,7 @@ Or in Visual Studio: **Build > Rebuild Solution**, then **F5**.
 | fo-dicom.Codecs | 5.16.4 | DICOM codec support |
 | fo-dicom.Desktop | 4.0.8 | Desktop DICOM rendering |
 | System.Drawing.Common | 9.0.9 | Bitmap pixel operations |
+| pythonnet | 3.0.* | Embed CPython runtime; call Python from C# (to be added) |
 
 ## Application Flow
 
@@ -79,6 +86,49 @@ Or in Visual Studio: **Build > Rebuild Solution**, then **F5**.
 - **Nullable types:** Enabled project-wide
 - **Implicit usings:** Enabled project-wide
 - **Unsafe code:** Enabled for bitmap pixel manipulation in `MainViewModel.LoadCurrentFrame()`
+
+## Python.NET Integration
+
+The app uses [Python.NET (pythonnet)](https://github.com/pythonnet/pythonnet) to run Python-based image analysis and ML inference in-process.
+
+### How It Works
+
+1. **`PythonService`** (in `Services/`) initializes the CPython runtime once at app startup via `PythonEngine.Initialize()`
+2. Python calls are wrapped in `using (Py.GIL()) { ... }` to acquire the Global Interpreter Lock
+3. DICOM pixel data is passed as `byte[]` → NumPy arrays via `np.frombuffer()`
+4. Python functions return primitives, lists, or dicts that are marshalled back to C# types
+5. All Python modules live in `PythonScripts/` and are added to `sys.path` at init
+
+### Threading
+
+Python.NET is single-threaded (GIL). To avoid blocking the WPF UI thread, run Python calls on a background thread:
+
+```csharp
+var result = await Task.Run(() =>
+{
+    using (Py.GIL())
+    {
+        dynamic analysis = Py.Import("analysis");
+        return analysis.compute_metrics(npArray);
+    }
+});
+```
+
+### Python Code Conventions
+
+- Follow PEP 8 style in all `.py` files
+- Use type hints on all function signatures
+- Keep functions stateless and pure — accept arrays, return serializable results
+- Pin dependency versions in `requirements.txt`
+- Do not use global mutable state in Python modules
+
+### Setup
+
+1. Install Python 3.10+ and ensure it is on `PATH`
+2. `python -m venv .venv && .venv\Scripts\activate`
+3. `pip install -r requirements.txt`
+4. Set `PYTHONNET_PYDLL` to point to `python3xx.dll` if not auto-detected
+5. Add `<PackageReference Include="pythonnet" Version="3.0.*" />` to `.csproj`
 
 ## MVVM Architecture
 
@@ -143,3 +193,4 @@ No automated test framework. Manual testing flow:
 - Authentication uses hardcoded demo data (needs database integration)
 - No unit tests or CI/CD pipeline
 - `Views/` folder is empty (reserved for future UserControls)
+- Python.NET integration not yet implemented — `PythonService`, `PythonScripts/`, and `requirements.txt` need to be created
