@@ -120,13 +120,23 @@
                                     BorderThickness="0"
                                     Cursor="Hand"/>
 
-                            <Button Content="Clear" 
+                            <Button Content="Clear"
                                     Command="{Binding ClearImageCommand}"
                                     Padding="15,8"
                                     Margin="0,0,10,0"
                                     Background="#E0E0E0"
                                     BorderThickness="0"
                                     Cursor="Hand"/>
+
+                            <Button Content="Generate Sample"
+                                    Command="{Binding GenerateSampleDicomCommand}"
+                                    Padding="15,8"
+                                    Margin="0,0,10,0"
+                                    Background="#4CAF50"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    ToolTip="Generate sample DICOM files via Python"/>
 
                             <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" 
                                        Margin="10,0"/>

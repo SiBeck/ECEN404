@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using System.IO;
+using System.Threading.Tasks;
 using FellowOakDicom;
 using FellowOakDicom.Imaging;
 
@@ -122,6 +123,7 @@ namespace _403DesktopApp
         public ICommand PreviousFrameCommand { get; }
         public ICommand FirstFrameCommand { get; }
         public ICommand LastFrameCommand { get; }
+        public ICommand GenerateSampleDicomCommand { get; }
 
         public MainViewModel()
         {
@@ -136,6 +138,7 @@ namespace _403DesktopApp
             PreviousFrameCommand = new RelayCommand(PreviousFrame, CanGoPreviousFrame);
             FirstFrameCommand = new RelayCommand(FirstFrame, CanGoPreviousFrame);
             LastFrameCommand = new RelayCommand(LastFrame, CanGoNextFrame);
+            GenerateSampleDicomCommand = new RelayCommand(GenerateSampleDicom);
         }
 
         private void Navigate(object parameter)
@@ -171,17 +174,7 @@ namespace _403DesktopApp
             {
                 try
                 {
-                    _currentImagePath = openFileDialog.FileName;
-
-                    var dicomFile = DicomFile.Open(_currentImagePath);
-                    _currentDicomImage = new DicomImage(dicomFile.Dataset);
-
-                    TotalFrames = _currentDicomImage.NumberOfFrames;
-                    CurrentFrameIndex = 0;
-
-                    LoadCurrentFrame();
-                    ZoomLevel = 1.0;
-
+                    LoadDicomFile(openFileDialog.FileName);
                     StatusText = $"Loaded: {Path.GetFileName(_currentImagePath)} ({TotalFrames} frame{(TotalFrames > 1 ? "s" : "")})";
                 }
                 catch (System.Exception ex)
@@ -240,6 +233,44 @@ namespace _403DesktopApp
             {
                 StatusText = $"Error rendering frame: {ex.Message}";
             }
+        }
+
+        private async void GenerateSampleDicom(object parameter)
+        {
+            StatusText = "Generating sample DICOM via Python...";
+
+            try
+            {
+                var generator = new DicomGeneratorService();
+                string outputDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "BioMetrix", "SampleDicoms");
+
+                // Run Python generation off the UI thread
+                var paths = await Task.Run(() => generator.GenerateAll(outputDir));
+
+                // Load the first generated file (grayscale) into the viewer
+                LoadDicomFile(paths[0]);
+                StatusText = $"Generated {paths.Count} sample DICOM files in {outputDir}";
+            }
+            catch (System.Exception ex)
+            {
+                StatusText = $"Error generating DICOM: {ex.Message}";
+            }
+        }
+
+        private void LoadDicomFile(string filePath)
+        {
+            _currentImagePath = filePath;
+
+            var dicomFile = DicomFile.Open(_currentImagePath);
+            _currentDicomImage = new DicomImage(dicomFile.Dataset);
+
+            TotalFrames = _currentDicomImage.NumberOfFrames;
+            CurrentFrameIndex = 0;
+
+            LoadCurrentFrame();
+            ZoomLevel = 1.0;
         }
 
         private void ClearImage(object parameter)
