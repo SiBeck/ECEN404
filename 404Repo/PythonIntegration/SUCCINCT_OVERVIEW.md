@@ -35,6 +35,7 @@ dotnet restore && dotnet run --project PythonIntegrationTests
 ```
 
 Set `PYTHONNET_PYDLL` if Python isn't auto-detected (e.g., `python311.dll` or `/usr/lib/libpython3.11.so`).
+Set `PYTHONNET_PYHOME` if you get `No module named 'encodings'` (e.g., `C:\Users\you\anaconda3` or `/usr`).
 
 ## Key Concept
 

@@ -21,12 +21,13 @@ Console.WriteLine("  BioMetrix Python.NET Integration Tests");
 Console.WriteLine("========================================");
 Console.WriteLine();
 
-// Allow overriding the Python DLL path via environment variable.
+// Allow overriding the Python DLL path and home directory via environment variables.
 string? pythonDll = Environment.GetEnvironmentVariable("PYTHONNET_PYDLL");
+string? pythonHome = Environment.GetEnvironmentVariable("PYTHONNET_PYHOME");
 
 try
 {
-    PythonSetup.Initialize(pythonDll);
+    PythonSetup.Initialize(pythonDll, pythonHome);
 }
 catch (Exception ex)
 {
@@ -36,6 +37,8 @@ catch (Exception ex)
     Console.WriteLine("  - Ensure Python 3.8+ is installed and on PATH");
     Console.WriteLine("  - On Windows, set PYTHONNET_PYDLL=python311.dll (or your version)");
     Console.WriteLine("  - On Linux, set PYTHONNET_PYDLL=/usr/lib/libpython3.11.so");
+    Console.WriteLine("  - If you see 'No module named encodings', set PYTHONNET_PYHOME to your");
+    Console.WriteLine("    Python installation directory (e.g., C:\\Users\\you\\anaconda3 or /usr/lib/python3.11)");
     Console.WriteLine("  - Run: pip install numpy pydicom");
     Environment.Exit(1);
     return;
