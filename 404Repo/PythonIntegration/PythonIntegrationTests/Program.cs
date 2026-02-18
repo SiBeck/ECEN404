@@ -34,8 +34,10 @@ catch (Exception ex)
     Console.WriteLine();
     Console.WriteLine("Troubleshooting:");
     Console.WriteLine("  - Ensure Python 3.8+ is installed and on PATH");
-    Console.WriteLine("  - On Windows, set PYTHONNET_PYDLL=python311.dll (or your version)");
-    Console.WriteLine("  - On Linux, set PYTHONNET_PYDLL=/usr/lib/libpython3.11.so");
+    Console.WriteLine("  - Auto-detection looks for 'python' or 'python3' on PATH");
+    Console.WriteLine("  - If auto-detection fails, set the PYTHONNET_PYDLL environment variable:");
+    Console.WriteLine("      Windows: set PYTHONNET_PYDLL=C:\\Python311\\python311.dll");
+    Console.WriteLine("      Linux:   export PYTHONNET_PYDLL=/usr/lib/libpython3.11.so");
     Console.WriteLine("  - Run: pip install numpy pydicom");
     Environment.Exit(1);
     return;
