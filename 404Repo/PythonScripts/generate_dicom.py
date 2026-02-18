@@ -1,13 +1,22 @@
 """
 Generate synthetic DICOM files for testing with the BioMetrix C# desktop viewer.
 
-Usage:
+This module is designed for both standalone CLI usage and Python.NET (pythonnet)
+integration. All public functions return structured data (dicts, lists, bytes)
+that marshal cleanly across the Python.NET boundary into C# types.
+
+Usage (standalone):
     python generate_dicom.py                          # Single-frame grayscale
     python generate_dicom.py --frames 10              # Multi-frame (10 frames)
     python generate_dicom.py --color                  # RGB color image
     python generate_dicom.py --output my_scan.dcm     # Custom output filename
     python generate_dicom.py --width 512 --height 512 # Custom dimensions
     python generate_dicom.py --pattern checkerboard   # Pattern: gradient, checkerboard, circle, shapes
+
+Usage (from C# via Python.NET):
+    dynamic dicomGen = Py.Import("generate_dicom");
+    dynamic result = dicomGen.build_dicom_and_report("output.dcm", width: 256, height: 256);
+    dynamic pixelBytes = dicomGen.generate_pixel_data("gradient", 256, 256);
 
 Requirements:
     pip install pydicom numpy Pillow
@@ -243,6 +252,168 @@ def build_dicom_file(
     # --- Save ---
     ds.save_as(str(output), write_like_original=False)
     return output
+
+
+def get_available_patterns() -> list:
+    """
+    Return the list of supported grayscale pattern names.
+
+    Callable from C# to populate UI dropdowns or validate user input.
+    """
+    return list(PATTERN_GENERATORS.keys())
+
+
+def generate_pixel_data(pattern: str, width: int = 256, height: int = 256,
+                        frame_index: int = 0, total_frames: int = 1) -> bytes:
+    """
+    Generate raw pixel data for a single frame and return as bytes.
+
+    This is the primary function for C# callers that want pixel data without
+    creating a DICOM file on disk. The returned bytes map directly to a
+    byte[] in C# for loading into a WriteableBitmap or similar.
+
+    Args:
+        pattern: One of "gradient", "checkerboard", "circle", "shapes".
+        width: Image width in pixels.
+        height: Image height in pixels.
+        frame_index: Current frame index (for multi-frame animations).
+        total_frames: Total number of frames in the sequence.
+
+    Returns:
+        Raw pixel bytes (uint8, row-major, grayscale).
+    """
+    generator = PATTERN_GENERATORS.get(pattern, generate_gradient)
+    arr = generator(width, height, frame_index, total_frames)
+    return arr.tobytes()
+
+
+def generate_color_pixel_data(width: int = 256, height: int = 256,
+                              frame_index: int = 0, total_frames: int = 1) -> bytes:
+    """
+    Generate raw RGB pixel data for a single frame and return as bytes.
+
+    Returns interleaved RGB bytes (3 bytes per pixel, row-major).
+    """
+    arr = generate_color_frame(width, height, frame_index, total_frames)
+    return arr.tobytes()
+
+
+def build_dicom_and_report(
+    output_path: str,
+    width: int = 256,
+    height: int = 256,
+    num_frames: int = 1,
+    color: bool = False,
+    pattern: str = "gradient",
+    patient_name: str = "Test^Patient",
+    patient_id: str = "PAT001",
+) -> dict:
+    """
+    Build a DICOM file and return a structured report dictionary.
+
+    This wraps build_dicom_file() with a return value suitable for C# callers.
+    Instead of printing to stdout, it returns all metadata as a dictionary
+    that Python.NET marshals into a PyDict accessible from C#.
+
+    Args:
+        output_path: File path for the generated DICOM file.
+        width: Image width in pixels.
+        height: Image height in pixels.
+        num_frames: Number of frames to generate.
+        color: If True, generate RGB; otherwise grayscale.
+        pattern: Pattern name (ignored if color=True).
+        patient_name: DICOM patient name (Last^First format).
+        patient_id: DICOM patient ID.
+
+    Returns:
+        Dictionary with keys:
+            - "output_path" (str): Absolute path of the created file.
+            - "width" (int): Image width.
+            - "height" (int): Image height.
+            - "num_frames" (int): Number of frames.
+            - "mode" (str): "RGB" or the grayscale pattern name.
+            - "patient_name" (str): Patient name used.
+            - "patient_id" (str): Patient ID used.
+            - "file_size_bytes" (int): Size of the created file.
+            - "transfer_syntax" (str): DICOM transfer syntax description.
+            - "success" (bool): Whether the file was created successfully.
+            - "error" (str): Error message, empty if successful.
+    """
+    try:
+        result_path = build_dicom_file(
+            output_path=output_path,
+            width=width,
+            height=height,
+            num_frames=num_frames,
+            color=color,
+            pattern=pattern,
+            patient_name=patient_name,
+            patient_id=patient_id,
+        )
+        return {
+            "output_path": str(result_path.resolve()),
+            "width": width,
+            "height": height,
+            "num_frames": num_frames,
+            "mode": "RGB" if color else pattern,
+            "patient_name": patient_name,
+            "patient_id": patient_id,
+            "file_size_bytes": result_path.stat().st_size,
+            "transfer_syntax": "Explicit VR Little Endian",
+            "success": True,
+            "error": "",
+        }
+    except Exception as e:
+        return {
+            "output_path": output_path,
+            "width": width,
+            "height": height,
+            "num_frames": num_frames,
+            "mode": "RGB" if color else pattern,
+            "patient_name": patient_name,
+            "patient_id": patient_id,
+            "file_size_bytes": -1,
+            "transfer_syntax": "",
+            "success": False,
+            "error": str(e),
+        }
+
+
+def get_dicom_metadata(dicom_path: str) -> dict:
+    """
+    Read an existing DICOM file and return its metadata as a dictionary.
+
+    Useful for C# integration tests that need to verify generated DICOM files
+    contain the expected attributes.
+
+    Args:
+        dicom_path: Path to a .dcm file.
+
+    Returns:
+        Dictionary with DICOM metadata, or an error dict if the file cannot be read.
+    """
+    p = Path(dicom_path)
+    if not p.exists():
+        return {"success": False, "error": f"File not found: {dicom_path}"}
+
+    try:
+        ds = pydicom.dcmread(str(p))
+        return {
+            "success": True,
+            "error": "",
+            "patient_name": str(getattr(ds, "PatientName", "")),
+            "patient_id": str(getattr(ds, "PatientID", "")),
+            "rows": int(getattr(ds, "Rows", 0)),
+            "columns": int(getattr(ds, "Columns", 0)),
+            "num_frames": int(getattr(ds, "NumberOfFrames", 1)),
+            "bits_allocated": int(getattr(ds, "BitsAllocated", 0)),
+            "photometric_interpretation": str(getattr(ds, "PhotometricInterpretation", "")),
+            "modality": str(getattr(ds, "Modality", "")),
+            "study_description": str(getattr(ds, "StudyDescription", "")),
+            "pixel_data_length": len(ds.PixelData) if hasattr(ds, "PixelData") else 0,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def main():
