@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Python.Runtime;
 
 namespace PythonIntegrationTests;
@@ -34,7 +36,12 @@ public static class PythonSetup
     /// Optional path to the Python shared library (e.g., "python311.dll" on Windows,
     /// "libpython3.11.so" on Linux). If null, Python.NET will auto-detect.
     /// </param>
-    public static void Initialize(string? pythonDll = null)
+    /// <param name="pythonHome">
+    /// Optional path to the Python installation directory (PYTHONHOME). Required for
+    /// embedded Python to locate the standard library (e.g., the 'encodings' module).
+    /// If null, auto-detection is attempted.
+    /// </param>
+    public static void Initialize(string? pythonDll = null, string? pythonHome = null)
     {
         if (_initialized) return;
 
@@ -57,6 +64,22 @@ public static class PythonSetup
         if (!string.IsNullOrEmpty(pythonDll))
         {
             Runtime.PythonDLL = pythonDll;
+        }
+
+        // Set PYTHONHOME so embedded CPython can locate the standard library.
+        // Without this, Python resolves sys.path entries as relative paths from
+        // the .NET output directory, causing "No module named 'encodings'" errors.
+        string? resolvedHome = pythonHome ?? DetectPythonHome();
+        if (!string.IsNullOrEmpty(resolvedHome))
+        {
+            PythonEngine.PythonHome = resolvedHome;
+            Console.WriteLine($"[PythonSetup] PythonHome set to: {resolvedHome}");
+        }
+        else
+        {
+            Console.WriteLine("[PythonSetup] WARNING: Could not detect PYTHONHOME. " +
+                "If initialization fails with 'No module named encodings', " +
+                "set the PYTHONNET_PYHOME environment variable to your Python installation path.");
         }
 
         PythonEngine.Initialize();
@@ -84,6 +107,60 @@ public static class PythonSetup
         PythonEngine.Shutdown();
         _initialized = false;
         Console.WriteLine("[PythonSetup] Runtime shut down.");
+    }
+
+    /// <summary>
+    /// Attempt to detect the Python installation directory (PYTHONHOME) by querying
+    /// a Python interpreter on PATH. This is needed so that embedded CPython can
+    /// locate its standard library (encodings, codecs, etc.).
+    /// </summary>
+    /// <returns>The Python home path, or null if detection fails.</returns>
+    private static string? DetectPythonHome()
+    {
+        // 1. Check if PYTHONHOME is already set in the environment.
+        string? envHome = Environment.GetEnvironmentVariable("PYTHONHOME");
+        if (!string.IsNullOrEmpty(envHome) && Directory.Exists(envHome))
+            return envHome;
+
+        // 2. Ask an external Python interpreter for sys.prefix.
+        //    This works even when embedding fails, because we're spawning a
+        //    separate process that has its own correctly-configured runtime.
+        string[] candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? new[] { "python", "python3" }
+            : new[] { "python3", "python" };
+
+        foreach (string exe in candidates)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exe,
+                    Arguments = "-c \"import sys; print(sys.prefix)\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                using var process = Process.Start(psi);
+                if (process == null) continue;
+
+                string output = process.StandardOutput.ReadToEnd().Trim();
+                process.WaitForExit();
+
+                if (process.ExitCode == 0 && !string.IsNullOrEmpty(output) && Directory.Exists(output))
+                {
+                    Console.WriteLine($"[PythonSetup] Auto-detected PythonHome via '{exe}': {output}");
+                    return output;
+                }
+            }
+            catch
+            {
+                // This candidate isn't available on PATH — try the next one.
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

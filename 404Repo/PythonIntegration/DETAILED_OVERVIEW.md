@@ -92,6 +92,8 @@ Before any Python code can run, the C# process must:
 
 The Python shared library can be configured via the `PYTHONNET_PYDLL` environment variable (e.g., `python311.dll` on Windows, `/usr/lib/libpython3.11.so` on Linux).
 
+If the embedded Python can't locate its standard library (e.g., `No module named 'encodings'`), the `PYTHONNET_PYHOME` environment variable can be set to the Python installation directory. If not set, `PythonSetup` will auto-detect the Python home by querying an external Python interpreter on PATH.
+
 ### 4.2 Test Execution Pattern
 
 Each test file follows the same pattern:
@@ -157,6 +159,12 @@ dotnet run --project PythonIntegrationTests
 set PYTHONNET_PYDLL=python311.dll
 # Linux:
 export PYTHONNET_PYDLL=/usr/lib/x86_64-linux-gnu/libpython3.11.so
+
+# If you get "No module named 'encodings'", set the Python home:
+# Windows (Anaconda example):
+set PYTHONNET_PYHOME=C:\Users\you\anaconda3
+# Linux:
+export PYTHONNET_PYHOME=/usr
 ```
 
 ### Expected Output
@@ -258,9 +266,10 @@ Overall: 30 tests, 30 passed, 0 failed
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
+| `No module named 'encodings'` | Embedded Python can't find its standard library | Set `PYTHONNET_PYHOME` to your Python installation directory (e.g., `C:\Users\you\anaconda3`). Auto-detection is attempted but may fail if Python isn't on PATH |
 | `DllNotFoundException` on startup | Python shared library not found | Set `PYTHONNET_PYDLL` to the full path of your Python DLL/SO |
 | `PythonException: ModuleNotFoundError` | `sys.path` doesn't include script directories | Verify `PythonSetup.PythonScriptsPath` points to the correct directory |
 | `ImportError: numpy` or `pydicom` | Missing Python packages | Run `pip install numpy pydicom` |
 | All generate_dicom tests fail | numpy/pydicom not installed | The test suite gracefully reports the import error |
 | `BadPythonDllException` | Python version mismatch | Ensure `pythonnet` version is compatible with your Python version |
-| Tests pass locally but fail in CI | Python not available in CI environment | Install Python in your CI pipeline and set `PYTHONNET_PYDLL` |
+| Tests pass locally but fail in CI | Python not available in CI environment | Install Python in your CI pipeline and set `PYTHONNET_PYDLL` and `PYTHONNET_PYHOME` |
