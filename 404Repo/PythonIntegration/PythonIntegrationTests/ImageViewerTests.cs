@@ -61,7 +61,7 @@ public static class ImageViewerTests
             results.RunTest("load_image_bytes returns None for missing file", () =>
             {
                 dynamic rawBytes = imageViewer.load_image_bytes("/nonexistent/fake.png");
-                bool isNone = rawBytes == null || rawBytes.Equals(Py.None());
+                bool isNone = rawBytes == null || rawBytes.ToString() == "None";
                 Assert.IsTrue(isNone, "Should return None for missing file");
             });
 
