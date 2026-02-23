@@ -72,6 +72,34 @@ public static class PythonSetup
         string? resolvedHome = pythonHome ?? detected.Home;
         string? resolvedDll = pythonDll ?? detected.Dll;
 
+        // Fallback: if we have the DLL path but not the home, derive the home
+        // from the DLL location. On Windows, pythonXY.dll lives in the Python
+        // installation root (e.g., C:\Users\simon\anaconda3\python39.dll).
+        // On Linux, libpythonX.Y.so may be in a lib/ subdirectory.
+        if (string.IsNullOrEmpty(resolvedHome) && !string.IsNullOrEmpty(resolvedDll))
+        {
+            string? dllDir = Path.GetDirectoryName(Path.GetFullPath(resolvedDll));
+            if (dllDir != null)
+            {
+                // On Linux, the .so is often in <prefix>/lib/, so go up one level.
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) &&
+                    Path.GetFileName(dllDir).Equals("lib", StringComparison.OrdinalIgnoreCase))
+                {
+                    dllDir = Path.GetDirectoryName(dllDir);
+                }
+
+                // Validate: a real Python home contains a Lib (Windows) or lib/pythonX.Y (Linux) directory
+                if (dllDir != null && (
+                    Directory.Exists(Path.Combine(dllDir, "Lib", "encodings")) ||
+                    Directory.Exists(Path.Combine(dllDir, "lib")) ||
+                    Directory.Exists(dllDir)))
+                {
+                    resolvedHome = dllDir;
+                    Console.WriteLine($"[PythonSetup] Derived PythonHome from DLL path: {resolvedHome}");
+                }
+            }
+        }
+
         // --- Step 1: Set Runtime.PythonDLL FIRST ---
         // The PythonHome setter calls TryUsingDll() internally, which requires
         // the native Python library to already be locatable. Without this,
