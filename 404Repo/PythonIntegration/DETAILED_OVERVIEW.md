@@ -214,7 +214,7 @@ Overall: 30 tests, 30 passed, 0 failed
 | `dict` | `pyObj["key"]` | Returns dynamic; cast inner values |
 | `list` | `pyObj[i]` or `pyObj.__len__()` | Index access; use `__len__()` for count |
 | `bytes` | `pyObj.__len__()` for length | Iterate or convert to byte[] |
-| `None` | Compare with `Py.None()` | Use `obj == null` or `obj.Equals(Py.None())` |
+| `None` | `((PyObject)pyObj).IsNone()` | Or check `obj == null`; `PyObject.None` is the singleton |
 
 ## 7. Architecture Diagram
 
