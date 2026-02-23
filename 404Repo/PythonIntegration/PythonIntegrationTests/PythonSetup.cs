@@ -10,12 +10,6 @@ namespace PythonIntegrationTests;
 /// Python.NET requires explicit initialization before any Python code can execute
 /// and explicit shutdown when done. This class centralizes that setup so that
 /// individual test classes don't need to manage the runtime themselves.
-///
-/// Initialization order matters for pythonnet 3.0+:
-///   1. Set Runtime.PythonDLL (so the native library is loadable)
-///   2. Set PYTHONHOME environment variable (belt-and-suspenders fallback)
-///   3. Set PythonEngine.PythonHome (calls Py_SetPythonHome via loaded DLL)
-///   4. Call PythonEngine.Initialize()
 /// </summary>
 public static class PythonSetup
 {
@@ -39,8 +33,8 @@ public static class PythonSetup
     /// This method is idempotent — calling it multiple times has no effect.
     /// </summary>
     /// <param name="pythonDll">
-    /// Optional path to the Python shared library (e.g., "python39.dll" on Windows,
-    /// "libpython3.11.so" on Linux). If null, auto-detection is attempted.
+    /// Optional path to the Python shared library (e.g., "python311.dll" on Windows,
+    /// "libpython3.11.so" on Linux). If null, Python.NET will auto-detect.
     /// </param>
     /// <param name="pythonHome">
     /// Optional path to the Python installation directory (PYTHONHOME). Required for
@@ -66,65 +60,28 @@ public static class PythonSetup
                 $"Searched from base directory: {baseDir}");
         }
 
-        // Auto-detect Python home and DLL if not provided.
-        // Detection queries an external Python interpreter on PATH.
-        var detected = DetectPythonInfo();
-        string? resolvedHome = pythonHome ?? detected.Home;
-        string? resolvedDll = pythonDll ?? detected.Dll;
-
-        // --- Step 1: Set Runtime.PythonDLL FIRST ---
-        // The PythonHome setter calls TryUsingDll() internally, which requires
-        // the native Python library to already be locatable. Without this,
-        // the Py_SetPythonHome call inside the PythonHome setter fails silently.
-        if (!string.IsNullOrEmpty(resolvedDll))
+        // Configure the Python runtime before initialization.
+        if (!string.IsNullOrEmpty(pythonDll))
         {
-            Runtime.PythonDLL = resolvedDll;
-            Console.WriteLine($"[PythonSetup] PythonDLL set to: {resolvedDll}");
+            Runtime.PythonDLL = pythonDll;
         }
 
-        // --- Step 2: Set PYTHONHOME environment variable ---
-        // This is a belt-and-suspenders fallback. CPython reads this env var
-        // directly during Py_Initialize() to construct absolute paths for
-        // sys.path (Lib/, DLLs/, etc.) instead of using relative paths from
-        // the .NET output directory. Without this, embedded Python fails with
-        // "No module named 'encodings'" because .\lib resolves to bin/Debug/net8.0/lib.
+        // Set PYTHONHOME so embedded CPython can locate the standard library.
+        // Without this, Python resolves sys.path entries as relative paths from
+        // the .NET output directory, causing "No module named 'encodings'" errors.
+        string? resolvedHome = pythonHome ?? DetectPythonHome();
         if (!string.IsNullOrEmpty(resolvedHome))
         {
-            Environment.SetEnvironmentVariable("PYTHONHOME", resolvedHome, EnvironmentVariableTarget.Process);
-            Console.WriteLine($"[PythonSetup] PYTHONHOME env var set to: {resolvedHome}");
-
-            // Also ensure the Python installation is on PATH so that dependent
-            // native DLLs (e.g., vcruntime140.dll) can be found by the loader.
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                string currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
-                string libraryBin = Path.Combine(resolvedHome, "Library", "bin");
-                if (!currentPath.Contains(resolvedHome, StringComparison.OrdinalIgnoreCase))
-                {
-                    string additions = resolvedHome;
-                    if (Directory.Exists(libraryBin))
-                        additions += ";" + libraryBin;
-                    Environment.SetEnvironmentVariable("PATH", additions + ";" + currentPath,
-                        EnvironmentVariableTarget.Process);
-                    Console.WriteLine($"[PythonSetup] Added Python directories to PATH");
-                }
-            }
-
-            // --- Step 3: Set PythonEngine.PythonHome ---
-            // Now that Runtime.PythonDLL is set, this setter can successfully call
-            // Py_SetPythonHome via the loaded native library.
             PythonEngine.PythonHome = resolvedHome;
-            Console.WriteLine($"[PythonSetup] PythonEngine.PythonHome set to: {resolvedHome}");
+            Console.WriteLine($"[PythonSetup] PythonHome set to: {resolvedHome}");
         }
         else
         {
             Console.WriteLine("[PythonSetup] WARNING: Could not detect PYTHONHOME. " +
                 "If initialization fails with 'No module named encodings', " +
-                "set the PYTHONNET_PYHOME environment variable to your Python installation path " +
-                "(e.g., C:\\Users\\you\\anaconda3).");
+                "set the PYTHONNET_PYHOME environment variable to your Python installation path.");
         }
 
-        // --- Step 4: Initialize the Python runtime ---
         PythonEngine.Initialize();
 
         // Add our script directories to Python's sys.path so modules can be imported.
@@ -153,22 +110,21 @@ public static class PythonSetup
     }
 
     /// <summary>
-    /// Query an external Python interpreter to detect the installation directory
-    /// (prefix), version, and shared library path. This works even when embedding
-    /// fails because we spawn a separate process with its own correctly-configured runtime.
+    /// Attempt to detect the Python installation directory (PYTHONHOME) by querying
+    /// a Python interpreter on PATH. This is needed so that embedded CPython can
+    /// locate its standard library (encodings, codecs, etc.).
     /// </summary>
-    private static (string? Home, string? Dll) DetectPythonInfo()
+    /// <returns>The Python home path, or null if detection fails.</returns>
+    private static string? DetectPythonHome()
     {
         // 1. Check if PYTHONHOME is already set in the environment.
         string? envHome = Environment.GetEnvironmentVariable("PYTHONHOME");
         if (!string.IsNullOrEmpty(envHome) && Directory.Exists(envHome))
-        {
-            // Try to derive the DLL name from PYTHONHOME by scanning for pythonXY.dll / libpythonX.Y.so
-            string? dll = FindPythonDllInHome(envHome);
-            return (envHome, dll);
-        }
+            return envHome;
 
-        // 2. Ask an external Python interpreter for prefix, version major, and version minor.
+        // 2. Ask an external Python interpreter for sys.prefix.
+        //    This works even when embedding fails, because we're spawning a
+        //    separate process that has its own correctly-configured runtime.
         string[] candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? new[] { "python", "python3" }
             : new[] { "python3", "python" };
@@ -180,7 +136,7 @@ public static class PythonSetup
                 var psi = new ProcessStartInfo
                 {
                     FileName = exe,
-                    Arguments = "-c \"import sys; print(sys.prefix); print(sys.version_info.major); print(sys.version_info.minor)\"",
+                    Arguments = "-c \"import sys; print(sys.prefix)\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -189,93 +145,18 @@ public static class PythonSetup
                 using var process = Process.Start(psi);
                 if (process == null) continue;
 
-                string output = process.StandardOutput.ReadToEnd();
+                string output = process.StandardOutput.ReadToEnd().Trim();
                 process.WaitForExit();
-                if (process.ExitCode != 0) continue;
 
-                string[] lines = output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                if (lines.Length < 3) continue;
-
-                string prefix = lines[0].Trim();
-                string major = lines[1].Trim();
-                string minor = lines[2].Trim();
-
-                if (!Directory.Exists(prefix)) continue;
-
-                Console.WriteLine($"[PythonSetup] Auto-detected via '{exe}': Python {major}.{minor} at {prefix}");
-
-                // Derive the shared library path.
-                string? dllPath = null;
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                if (process.ExitCode == 0 && !string.IsNullOrEmpty(output) && Directory.Exists(output))
                 {
-                    // Windows: pythonXY.dll in the prefix directory
-                    string dllName = $"python{major}{minor}.dll";
-                    string fullPath = Path.Combine(prefix, dllName);
-                    dllPath = File.Exists(fullPath) ? fullPath : dllName;
+                    Console.WriteLine($"[PythonSetup] Auto-detected PythonHome via '{exe}': {output}");
+                    return output;
                 }
-                else
-                {
-                    // Linux/macOS: search common locations for libpythonX.Y.so
-                    string soName = $"libpython{major}.{minor}.so";
-                    string[] searchPaths = new[]
-                    {
-                        Path.Combine(prefix, "lib", soName),
-                        Path.Combine(prefix, "lib", $"libpython{major}.{minor}.so.1.0"),
-                        $"/usr/lib/x86_64-linux-gnu/{soName}",
-                        $"/usr/lib64/{soName}",
-                        $"/usr/lib/{soName}",
-                    };
-                    dllPath = searchPaths.FirstOrDefault(File.Exists) ?? soName;
-                }
-
-                return (prefix, dllPath);
             }
             catch
             {
                 // This candidate isn't available on PATH — try the next one.
-            }
-        }
-
-        return (null, null);
-    }
-
-    /// <summary>
-    /// Given a Python home directory, try to find the pythonXY.dll or libpythonX.Y.so file.
-    /// </summary>
-    private static string? FindPythonDllInHome(string home)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // Look for pythonXY.dll in the home directory (e.g., python39.dll, python311.dll)
-            try
-            {
-                foreach (string file in Directory.GetFiles(home, "python*.dll"))
-                {
-                    string name = Path.GetFileNameWithoutExtension(file);
-                    // Match pattern: pythonXY where X and Y are digits
-                    if (name.Length >= 8 && name.StartsWith("python") &&
-                        char.IsDigit(name[6]) && char.IsDigit(name[^1]))
-                    {
-                        return file;
-                    }
-                }
-            }
-            catch { /* Permission or access error */ }
-        }
-        else
-        {
-            // Look for libpythonX.Y.so in lib/
-            string libDir = Path.Combine(home, "lib");
-            if (Directory.Exists(libDir))
-            {
-                try
-                {
-                    foreach (string file in Directory.GetFiles(libDir, "libpython*.so"))
-                    {
-                        return file;
-                    }
-                }
-                catch { /* Permission or access error */ }
             }
         }
 
