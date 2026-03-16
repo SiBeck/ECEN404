@@ -34,5 +34,16 @@ namespace _403DesktopApp
                 Shutdown();
             }
         }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            // Clean up Python runtime if it was initialized
+            if (PythonSetup.IsInitialized)
+            {
+                PythonSetup.Shutdown();
+            }
+
+            base.OnExit(e);
+        }
     }
 }
