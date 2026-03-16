@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -23,13 +23,6 @@ namespace _403DesktopApp
         private DicomImage _currentDicomImage;
         private int _currentFrameIndex = 0;
         private int _totalFrames = 0;
-
-        // Scan filter fields
-        private readonly ScanFilterService _scanFilterService = new();
-        private bool _isFilterRunning;
-        private string _filterResultSummary = "";
-        private List<string> _filteredDicomFiles = new();
-        private bool _isFilteredSeriesMode;
 
         public string CurrentPage
         {
@@ -118,19 +111,6 @@ namespace _403DesktopApp
 
         public bool HasMultipleFrames => TotalFrames > 1;
 
-        // Scan filter properties
-        public bool IsFilterRunning
-        {
-            get => _isFilterRunning;
-            set { _isFilterRunning = value; OnPropertyChanged(); }
-        }
-
-        public string FilterResultSummary
-        {
-            get => _filterResultSummary;
-            set { _filterResultSummary = value; OnPropertyChanged(); }
-        }
-
         public ICommand NavigateCommand { get; }
         public ICommand SubmitCommand { get; }
         public ICommand OpenImageCommand { get; }
@@ -142,7 +122,6 @@ namespace _403DesktopApp
         public ICommand PreviousFrameCommand { get; }
         public ICommand FirstFrameCommand { get; }
         public ICommand LastFrameCommand { get; }
-        public ICommand RunScanFilterCommand { get; }
 
         public MainViewModel()
         {
@@ -157,7 +136,6 @@ namespace _403DesktopApp
             PreviousFrameCommand = new RelayCommand(PreviousFrame, CanGoPreviousFrame);
             FirstFrameCommand = new RelayCommand(FirstFrame, CanGoPreviousFrame);
             LastFrameCommand = new RelayCommand(LastFrame, CanGoNextFrame);
-            RunScanFilterCommand = new RelayCommand(RunScanFilter, _ => !_isFilterRunning);
         }
 
         private void Navigate(object parameter)
@@ -193,11 +171,6 @@ namespace _403DesktopApp
             {
                 try
                 {
-                    // Reset filtered series mode when opening a single file
-                    _isFilteredSeriesMode = false;
-                    _filteredDicomFiles.Clear();
-                    FilterResultSummary = "";
-
                     _currentImagePath = openFileDialog.FileName;
 
                     var dicomFile = DicomFile.Open(_currentImagePath);
@@ -221,81 +194,52 @@ namespace _403DesktopApp
 
         private void LoadCurrentFrame()
         {
-            if (_isFilteredSeriesMode && _filteredDicomFiles.Count > 0)
-            {
-                LoadFilteredFrame();
-                return;
-            }
-
             if (_currentDicomImage == null) return;
 
             try
             {
                 var image = _currentDicomImage.RenderImage(CurrentFrameIndex);
-                RenderImageToSource(image);
+
+                int width = image.Width;
+                int height = image.Height;
+
+                var bitmap = new WriteableBitmap(
+                    width,
+                    height,
+                    96,
+                    96,
+                    System.Windows.Media.PixelFormats.Bgra32,
+                    null);
+
+                var pixelData = image.AsBytes();
+
+                bitmap.Lock();
+                try
+                {
+                    unsafe
+                    {
+                        int stride = bitmap.BackBufferStride;
+                        byte* pBackBuffer = (byte*)bitmap.BackBuffer;
+
+                        for (int i = 0; i < pixelData.Length && i < stride * height; i++)
+                        {
+                            pBackBuffer[i] = pixelData[i];
+                        }
+                    }
+
+                    bitmap.AddDirtyRect(new System.Windows.Int32Rect(0, 0, width, height));
+                }
+                finally
+                {
+                    bitmap.Unlock();
+                }
+
+                CurrentImageSource = bitmap;
             }
             catch (System.Exception ex)
             {
                 StatusText = $"Error rendering frame: {ex.Message}";
             }
-        }
-
-        private void LoadFilteredFrame()
-        {
-            if (CurrentFrameIndex < 0 || CurrentFrameIndex >= _filteredDicomFiles.Count) return;
-
-            try
-            {
-                string filePath = _filteredDicomFiles[CurrentFrameIndex];
-                var dicomFile = DicomFile.Open(filePath);
-                var dicomImage = new DicomImage(dicomFile.Dataset);
-                var image = dicomImage.RenderImage(0);
-                RenderImageToSource(image);
-                _currentImagePath = filePath;
-            }
-            catch (System.Exception ex)
-            {
-                StatusText = $"Error rendering filtered frame: {ex.Message}";
-            }
-        }
-
-        private void RenderImageToSource(FellowOakDicom.Imaging.IImage image)
-        {
-            int width = image.Width;
-            int height = image.Height;
-
-            var bitmap = new WriteableBitmap(
-                width,
-                height,
-                96,
-                96,
-                System.Windows.Media.PixelFormats.Bgra32,
-                null);
-
-            var pixelData = image.AsBytes();
-
-            bitmap.Lock();
-            try
-            {
-                unsafe
-                {
-                    int stride = bitmap.BackBufferStride;
-                    byte* pBackBuffer = (byte*)bitmap.BackBuffer;
-
-                    for (int i = 0; i < pixelData.Length && i < stride * height; i++)
-                    {
-                        pBackBuffer[i] = pixelData[i];
-                    }
-                }
-
-                bitmap.AddDirtyRect(new System.Windows.Int32Rect(0, 0, width, height));
-            }
-            finally
-            {
-                bitmap.Unlock();
-            }
-
-            CurrentImageSource = bitmap;
         }
 
         private void ClearImage(object parameter)
@@ -309,11 +253,6 @@ namespace _403DesktopApp
             ImageInfo = "No image loaded";
             ImageDimensions = "";
             StatusText = "Image cleared";
-
-            // Reset filtered series mode
-            _isFilteredSeriesMode = false;
-            _filteredDicomFiles.Clear();
-            FilterResultSummary = "";
         }
 
         private void ZoomIn(object parameter)
@@ -345,8 +284,6 @@ namespace _403DesktopApp
 
         private bool CanGoNextFrame(object parameter)
         {
-            if (_isFilteredSeriesMode)
-                return _filteredDicomFiles.Count > 0 && CurrentFrameIndex < _filteredDicomFiles.Count - 1;
             return _currentDicomImage != null && CurrentFrameIndex < TotalFrames - 1;
         }
 
@@ -361,8 +298,6 @@ namespace _403DesktopApp
 
         private bool CanGoPreviousFrame(object parameter)
         {
-            if (_isFilteredSeriesMode)
-                return _filteredDicomFiles.Count > 0 && CurrentFrameIndex > 0;
             return _currentDicomImage != null && CurrentFrameIndex > 0;
         }
 
@@ -377,7 +312,7 @@ namespace _403DesktopApp
 
         private void FirstFrame(object parameter)
         {
-            if ((_isFilteredSeriesMode ? _filteredDicomFiles.Count > 0 : _currentDicomImage != null) && CurrentFrameIndex != 0)
+            if (_currentDicomImage != null && CurrentFrameIndex != 0)
             {
                 CurrentFrameIndex = 0;
                 LoadCurrentFrame();
@@ -386,99 +321,11 @@ namespace _403DesktopApp
 
         private void LastFrame(object parameter)
         {
-            int lastIndex = _isFilteredSeriesMode ? _filteredDicomFiles.Count - 1 : TotalFrames - 1;
-            if (lastIndex >= 0 && CurrentFrameIndex != lastIndex)
+            if (_currentDicomImage != null && CurrentFrameIndex != TotalFrames - 1)
             {
-                CurrentFrameIndex = lastIndex;
+                CurrentFrameIndex = TotalFrames - 1;
                 LoadCurrentFrame();
             }
-        }
-
-        private async void RunScanFilter(object parameter)
-        {
-            // Step 1: Select cardiogram CSV
-            var csvDialog = new OpenFileDialog
-            {
-                Title = "Select Cardiogram CSV File",
-                Filter = "CSV Files|*.csv|All Files|*.*",
-                FilterIndex = 1
-            };
-
-            if (csvDialog.ShowDialog() != true) return;
-            string csvPath = csvDialog.FileName;
-
-            // Step 2: Select DICOM folder
-            using var folderDialog = new System.Windows.Forms.FolderBrowserDialog
-            {
-                Description = "Select DICOM Series Folder",
-                ShowNewFolderButton = false
-            };
-
-            if (folderDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
-            string dicomFolder = folderDialog.SelectedPath;
-
-            // Step 3: Run the filter
-            IsFilterRunning = true;
-            FilterResultSummary = "";
-            StatusText = "Initializing Python runtime...";
-
-            string outputDir = Path.Combine(
-                Path.GetTempPath(),
-                "BioMetrix_Filtered_" + Guid.NewGuid().ToString("N")[..8]);
-
-            try
-            {
-                _scanFilterService.EnsurePythonInitialized();
-                StatusText = "Running scan filter pipeline...";
-
-                var result = await _scanFilterService.RunFilterAsync(
-                    csvPath, dicomFolder, outputDir);
-
-                if (result.Success)
-                {
-                    FilterResultSummary = $"Accepted: {result.AcceptedFrames}, Rejected: {result.RejectedFrames}, Stable cycles: {result.StableCycles}";
-                    StatusText = $"Scan filter complete. {result.AcceptedFrames} frames accepted.";
-                    LoadFilteredDicomFolder(result.OutputDir);
-                }
-                else
-                {
-                    StatusText = $"Scan filter failed: {result.Error}";
-                    FilterResultSummary = "";
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusText = $"Scan filter error: {ex.Message}";
-            }
-            finally
-            {
-                IsFilterRunning = false;
-            }
-        }
-
-        private void LoadFilteredDicomFolder(string folderPath)
-        {
-            if (!Directory.Exists(folderPath)) return;
-
-            var files = Directory.GetFiles(folderPath, "*.dcm")
-                .OrderBy(f => f)
-                .ToList();
-
-            if (files.Count == 0)
-            {
-                StatusText = "No DICOM files found in filtered output.";
-                return;
-            }
-
-            _filteredDicomFiles = files;
-            _isFilteredSeriesMode = true;
-            _currentDicomImage = null;
-
-            TotalFrames = files.Count;
-            CurrentFrameIndex = 0;
-            ZoomLevel = 1.0;
-
-            LoadCurrentFrame();
         }
 
         private void UpdateImageInfo()

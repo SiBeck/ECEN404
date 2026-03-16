@@ -158,30 +158,10 @@
                                     BorderBrush="#CCCCCC"
                                     Cursor="Hand"/>
 
-                            <TextBlock Text="{Binding ZoomPercentage, StringFormat='{}{0:F0}%'}"
+                            <TextBlock Text="{Binding ZoomPercentage, StringFormat='{}{0:F0}%'}" 
                                        VerticalAlignment="Center"
                                        Margin="10,0"
                                        FontWeight="SemiBold"/>
-
-                            <!-- Scan Filter Controls -->
-                            <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                                       Margin="10,0"/>
-
-                            <Button Content="Scan Filter"
-                                    Command="{Binding RunScanFilterCommand}"
-                                    Padding="15,8"
-                                    Margin="0,0,10,0"
-                                    Background="#28A745"
-                                    Foreground="White"
-                                    BorderThickness="0"
-                                    Cursor="Hand"
-                                    ToolTip="Filter DICOM series using cardiogram data"/>
-
-                            <TextBlock Text="{Binding FilterResultSummary}"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0"
-                                       FontStyle="Italic"
-                                       Foreground="#555555"/>
 
                             <!-- Frame Navigation Controls -->
                             <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" 
