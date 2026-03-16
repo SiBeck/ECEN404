@@ -1,0 +1,8 @@
+numpy>=1.25
+pandas>=2.1
+pydicom>=2.4
+pyyaml>=6.0
+matplotlib>=3.8
+
+[dev]
+pytest>=7.4

@@ -1,0 +1,24 @@
+Scan Filter Visualization Summary
+Total frames: 18
+Accepted frames: 8
+Rejected frames: 10
+
+Frame timestamps (ms):
+frame_0000.dcm: 100.00 ms (REJECTED)
+frame_0001.dcm: 240.00 ms (REJECTED)
+frame_0002.dcm: 380.00 ms (REJECTED)
+frame_0003.dcm: 520.00 ms (REJECTED)
+frame_0004.dcm: 660.00 ms (REJECTED)
+frame_0005.dcm: 800.00 ms (ACCEPTED)
+frame_0006.dcm: 940.00 ms (ACCEPTED)
+frame_0007.dcm: 1080.00 ms (REJECTED)
+frame_0008.dcm: 1220.00 ms (REJECTED)
+frame_0009.dcm: 1360.00 ms (ACCEPTED)
+frame_0010.dcm: 1500.00 ms (ACCEPTED)
+frame_0011.dcm: 1640.00 ms (ACCEPTED)
+frame_0012.dcm: 1780.00 ms (REJECTED)
+frame_0013.dcm: 1920.00 ms (REJECTED)
+frame_0014.dcm: 2060.00 ms (ACCEPTED)
+frame_0015.dcm: 2200.00 ms (ACCEPTED)
+frame_0016.dcm: 2340.00 ms (ACCEPTED)
+frame_0017.dcm: 2480.00 ms (REJECTED)
