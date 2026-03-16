@@ -1,0 +1,14 @@
+alignment:
+  max_offset_ms: 2500.0
+cycle_detection:
+  window_ms: 900.0
+  min_peak_prominence: 0.5
+  stable_rr_variation_pct: 7.5
+  min_rr_ms: 400.0
+  max_rr_ms: 1800.0
+filtering:
+  stable_phase_fraction: 0.35
+  stable_phase_offset: 0.25
+  fallback_min_frames: 2
+io:
+  default_output_dir: output/filtered_series

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scan-filter"
+version = "0.1.0"
+description = "Cardiac-aware DICOM filtering pipeline"
+authors = [{name = "Scan Filter Authors"}]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.25",
+    "pandas>=2.1",
+    "pydicom>=2.4",
+    "pyyaml>=6.0",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+]
+
+[tool.setuptools.packages.find]
+include = ["scan_filter*"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "scan_filter",
+]
