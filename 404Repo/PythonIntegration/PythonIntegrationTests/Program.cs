@@ -60,6 +60,10 @@ Console.WriteLine();
 Console.WriteLine("Running generate_dicom.py tests...");
 allResults.Add(GenerateDicomTests.Run());
 
+Console.WriteLine();
+Console.WriteLine("Running scan_filter_bridge.py tests...");
+allResults.Add(ScanFilterBridgeTests.Run());
+
 // --- Report ---
 
 Console.WriteLine();
