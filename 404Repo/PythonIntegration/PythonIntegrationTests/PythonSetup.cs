@@ -162,6 +162,14 @@ public static class PythonSetup
             dynamic sys = Py.Import("sys");
             sys.path.append(PythonScriptsPath);
             sys.path.append(DummyCodePath);
+
+            // Add Scan Filter Code directory so the scan_filter package is importable.
+            string scanFilterCodePath = Path.Combine(PythonScriptsPath, "Scan Filter Code");
+            if (Directory.Exists(scanFilterCodePath))
+            {
+                sys.path.append(scanFilterCodePath);
+                Console.WriteLine($"[PythonSetup] Scan Filter Code path: {scanFilterCodePath}");
+            }
         }
 
         _initialized = true;
