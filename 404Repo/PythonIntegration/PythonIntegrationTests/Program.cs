@@ -47,18 +47,49 @@ catch (Exception ex)
 var allResults = new List<TestResults>();
 
 // --- Run test suites ---
+// Each suite is wrapped in try/catch so that a crash in one doesn't prevent the others from running.
 
 Console.WriteLine();
 Console.WriteLine("Running example.py tests...");
-allResults.Add(ExampleModuleTests.Run());
+try
+{
+    allResults.Add(ExampleModuleTests.Run());
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  [CRASH] example.py suite threw an unhandled exception: {ex.Message}");
+    var crash = new TestResults("example.py");
+    crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
+    allResults.Add(crash);
+}
 
 Console.WriteLine();
 Console.WriteLine("Running image_viewer.py tests...");
-allResults.Add(ImageViewerTests.Run());
+try
+{
+    allResults.Add(ImageViewerTests.Run());
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  [CRASH] image_viewer.py suite threw an unhandled exception: {ex.Message}");
+    var crash = new TestResults("image_viewer.py");
+    crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
+    allResults.Add(crash);
+}
 
 Console.WriteLine();
 Console.WriteLine("Running scan_filter_bridge.py tests...");
-allResults.Add(ScanFilterBridgeTests.Run());
+try
+{
+    allResults.Add(ScanFilterBridgeTests.Run());
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  [CRASH] scan_filter_bridge.py suite threw an unhandled exception: {ex.Message}");
+    var crash = new TestResults("scan_filter_bridge.py");
+    crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
+    allResults.Add(crash);
+}
 
 // --- Report ---
 
