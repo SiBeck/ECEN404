@@ -17,6 +17,7 @@ DICOM_DIRNAME = "dicom_sample"
 
 def generate_cardiogram(destination: Path, beats: int = 18, base_rr_ms: float = 800.0) -> Path:
     """Generate a synthetic cardiogram with mild RR variability."""
+    destination = Path(destination)  # Accept str from Python.NET callers
     sample_period_ms = 5.0
     total_ms = int(beats * base_rr_ms + 1000)
     timestamps = np.arange(0, total_ms, sample_period_ms, dtype=float)
@@ -106,7 +107,7 @@ def generate_dicom_series(
     (frame size, cadence jitter, or clock offsets) while keeping the original
     defaults backward compatible.
     """
-
+    destination = Path(destination)  # Accept str from Python.NET callers
     destination.mkdir(parents=True, exist_ok=True)
     base_time = datetime.utcnow()
     study_uid = generate_uid()
