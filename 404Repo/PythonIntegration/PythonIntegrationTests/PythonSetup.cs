@@ -215,6 +215,7 @@ public static class PythonSetup
         }
 
         // 3. Ask an external Python interpreter for prefix, version major, and version minor.
+        //    Skip Anaconda/Miniconda if a standalone Python is preferred.
         string[] candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? new[] { "python", "python3" }
             : new[] { "python3", "python" };
@@ -226,7 +227,7 @@ public static class PythonSetup
                 var psi = new ProcessStartInfo
                 {
                     FileName = exe,
-                    Arguments = "-c \"import sys; print(sys.prefix); print(sys.version_info.major); print(sys.version_info.minor)\"",
+                    Arguments = "-c \"import sys; print(sys.prefix); print(sys.version_info.major); print(sys.version_info.minor); print(sys.executable)\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -245,8 +246,24 @@ public static class PythonSetup
                 string prefix = lines[0].Trim();
                 string major = lines[1].Trim();
                 string minor = lines[2].Trim();
+                string exePath = lines.Length >= 4 ? lines[3].Trim() : "";
 
                 if (!Directory.Exists(prefix)) continue;
+
+                // Skip Anaconda/Miniconda installations — prefer standalone Python.
+                if (prefix.Contains("anaconda", StringComparison.OrdinalIgnoreCase) ||
+                    prefix.Contains("miniconda", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"[PythonSetup] Skipping Anaconda/Miniconda at {prefix} via '{exe}'");
+                    continue;
+                }
+
+                // Skip the Windows Store stub (WindowsApps) — it's not a real install.
+                if (exePath.Contains("WindowsApps", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"[PythonSetup] Skipping Windows Store stub via '{exe}'");
+                    continue;
+                }
 
                 Console.WriteLine($"[PythonSetup] Auto-detected via '{exe}': Python {major}.{minor} at {prefix}");
 
@@ -291,14 +308,16 @@ public static class PythonSetup
     /// </summary>
     private static (string? Home, string? Dll) FindStandalonePython()
     {
-        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-        // Search these base directories for PythonXYZ folders
-        string[] baseDirs = new[]
+        // Search these directories for Python installations.
+        // Each entry can be either a parent (containing PythonXYZ subfolders)
+        // or a direct Python home directory.
+        string[] searchDirs = new[]
         {
             Path.Combine(localAppData, "Programs", "Python"),  // Default per-user install
-            @"C:\Python",                                        // Legacy installs (C:\Python312, etc.)
+            Path.Combine(localAppData, "Python"),               // Alternative per-user install
+            @"C:\Python",                                        // Legacy installs
             @"C:\Program Files\Python",                          // All-users install
             @"C:\Program Files (x86)\Python",
         };
@@ -306,23 +325,38 @@ public static class PythonSetup
         // Prefer newer versions first
         int[] minors = { 12, 13, 11, 10, 9, 8 };
 
-        foreach (string baseDir in baseDirs)
+        foreach (string baseDir in searchDirs)
         {
+            if (!Directory.Exists(baseDir))
+                continue;
+
             foreach (int minor in minors)
             {
-                string candidate = Path.Combine(baseDir, $"Python3{minor}");
-                // Also check flat paths like C:\Python312
-                string flatCandidate = $"{baseDir}3{minor}";
+                // Check subdirectory layout: baseDir/Python3XX/python3XX.dll
+                string subDirHome = Path.Combine(baseDir, $"Python3{minor}");
+                // Check flat layout: baseDir3XX (e.g., C:\Python312)
+                string flatHome = $"{baseDir}3{minor}";
 
-                foreach (string home in new[] { candidate, flatCandidate })
+                foreach (string home in new[] { subDirHome, flatHome, baseDir })
                 {
+                    if (!Directory.Exists(home))
+                        continue;
+
                     string dllPath = Path.Combine(home, $"python3{minor}.dll");
-                    if (File.Exists(dllPath) && Directory.Exists(Path.Combine(home, "Lib", "encodings")))
+                    if (File.Exists(dllPath))
                     {
                         Console.WriteLine($"[PythonSetup] Found standalone Python 3.{minor} at {home}");
                         return (home, dllPath);
                     }
                 }
+            }
+
+            // Also scan baseDir directly for any pythonXY.dll
+            string? foundDll = FindPythonDllInHome(baseDir);
+            if (foundDll != null)
+            {
+                Console.WriteLine($"[PythonSetup] Found standalone Python at {baseDir} ({Path.GetFileName(foundDll)})");
+                return (baseDir, foundDll);
             }
         }
 
