@@ -31,11 +31,13 @@ public class TestResults
         {
             Cases.Add(new TestCase(name, false, ex.Message));
             Console.WriteLine($"  [FAIL] {name}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"  [FAIL] {name}: {ex.Message}");
         }
         catch (Exception ex)
         {
             Cases.Add(new TestCase(name, false, $"[ERROR] {ex.GetType().Name}: {ex.Message}"));
             Console.WriteLine($"  [ERROR] {name}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"  [ERROR] {name}: {ex.GetType().Name}: {ex.Message}");
         }
     }
 

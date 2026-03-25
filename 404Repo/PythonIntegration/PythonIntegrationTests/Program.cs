@@ -1,3 +1,4 @@
+using Python.Runtime;
 using PythonIntegrationTests;
 
 /// <summary>
@@ -43,6 +44,37 @@ catch (Exception ex)
     Environment.Exit(1);
     return;
 }
+
+// Print diagnostic info to help debug path issues.
+// Output goes to both Console and Debug (VS Output window).
+void Diag(string msg)
+{
+    Console.WriteLine(msg);
+    System.Diagnostics.Debug.WriteLine(msg);
+}
+
+Diag($"[Diagnostics] PythonScripts path: {PythonSetup.PythonScriptsPath}");
+Diag($"[Diagnostics] Dummy code path:    {PythonSetup.DummyCodePath}");
+Diag($"[Diagnostics] PythonScripts exists: {Directory.Exists(PythonSetup.PythonScriptsPath)}");
+Diag($"[Diagnostics] Dummy code exists:    {Directory.Exists(PythonSetup.DummyCodePath)}");
+
+// Check that key Python files exist on disk.
+string examplePy = Path.Combine(PythonSetup.PythonScriptsPath, "example.py");
+string imageViewerPy = Path.Combine(PythonSetup.DummyCodePath, "image_viewer.py");
+string bridgePy = Path.Combine(PythonSetup.PythonScriptsPath, "scan_filter_bridge.py");
+Diag($"[Diagnostics] example.py exists:            {File.Exists(examplePy)}  ({examplePy})");
+Diag($"[Diagnostics] image_viewer.py exists:       {File.Exists(imageViewerPy)}  ({imageViewerPy})");
+Diag($"[Diagnostics] scan_filter_bridge.py exists: {File.Exists(bridgePy)}  ({bridgePy})");
+
+// Print Python sys.path for troubleshooting import failures.
+using (Py.GIL())
+{
+    dynamic sys = Py.Import("sys");
+    Diag("[Diagnostics] Python sys.path:");
+    foreach (var p in sys.path)
+        Diag($"  - {p}");
+}
+Console.WriteLine();
 
 var allResults = new List<TestResults>();
 
