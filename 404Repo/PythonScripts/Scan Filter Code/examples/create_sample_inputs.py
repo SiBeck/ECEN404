@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 from pydicom.dataset import Dataset, FileDataset
-from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+from pydicom.uid import UID, ExplicitVRLittleEndian, generate_uid
 
 CARDIO_FILENAME = "cardiogram_sample.csv"
 DICOM_DIRNAME = "dicom_sample"
@@ -45,7 +45,7 @@ def generate_cardiogram(destination: Path, beats: int = 18, base_rr_ms: float = 
     return destination
 
 
-MR_IMAGE_STORAGE_UID = "1.2.840.10008.5.1.4.1.1.4"
+MR_IMAGE_STORAGE_UID = UID("1.2.840.10008.5.1.4.1.1.4")
 
 
 def build_file_meta(sop_instance_uid: str) -> Dataset:
