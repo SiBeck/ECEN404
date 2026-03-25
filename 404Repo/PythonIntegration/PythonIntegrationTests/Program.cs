@@ -36,10 +36,10 @@ catch (Exception ex)
     Console.WriteLine();
     Console.WriteLine("Troubleshooting:");
     Console.WriteLine("  - Ensure Python 3.8+ is installed and on PATH");
-    Console.WriteLine("  - On Windows, set PYTHONNET_PYDLL=python311.dll (or your version)");
-    Console.WriteLine("  - On Linux, set PYTHONNET_PYDLL=/usr/lib/libpython3.11.so");
+    Console.WriteLine("  - On Windows, set PYTHONNET_PYDLL=python312.dll (or your version)");
+    Console.WriteLine("  - On Linux, set PYTHONNET_PYDLL=/usr/lib/libpython3.12.so");
     Console.WriteLine("  - If you see 'No module named encodings', set PYTHONNET_PYHOME to your");
-    Console.WriteLine("    Python installation directory (e.g., C:\\Users\\you\\anaconda3 or /usr/lib/python3.11)");
+    Console.WriteLine("    Python installation directory (e.g., C:\\Users\\you\\AppData\\Local\\Programs\\Python\\Python312)");
     Console.WriteLine("  - Run: pip install numpy pandas pydicom pyyaml");
     Environment.Exit(1);
     return;

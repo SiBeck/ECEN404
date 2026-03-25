@@ -3,7 +3,6 @@
     "PythonIntegrationTests": {
       "commandName": "Project",
       "environmentVariables": {
-        "PYTHONNET_PYDLL": "C:\\Users\\simon\\anaconda3\\python39.dll"
       }
     }
   }

@@ -74,7 +74,7 @@ public static class PythonSetup
 
         // Fallback: if we have the DLL path but not the home, derive the home
         // from the DLL location. On Windows, pythonXY.dll lives in the Python
-        // installation root (e.g., C:\Users\simon\anaconda3\python39.dll).
+        // installation root (e.g., C:\...\Python312\python312.dll).
         // On Linux, libpythonX.Y.so may be in a lib/ subdirectory.
         if (string.IsNullOrEmpty(resolvedHome) && !string.IsNullOrEmpty(resolvedDll))
         {
@@ -150,7 +150,7 @@ public static class PythonSetup
             Console.WriteLine("[PythonSetup] WARNING: Could not detect PYTHONHOME. " +
                 "If initialization fails with 'No module named encodings', " +
                 "set the PYTHONNET_PYHOME environment variable to your Python installation path " +
-                "(e.g., C:\\Users\\you\\anaconda3).");
+                "(e.g., C:\\Users\\you\\AppData\\Local\\Programs\\Python\\Python312).");
         }
 
         // --- Step 4: Initialize the Python runtime ---
@@ -205,7 +205,16 @@ public static class PythonSetup
             return (envHome, dll);
         }
 
-        // 2. Ask an external Python interpreter for prefix, version major, and version minor.
+        // 2. On Windows, check well-known standalone Python install locations FIRST,
+        //    before falling back to PATH (which may find Anaconda instead).
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var wellKnown = FindStandalonePython();
+            if (wellKnown.Home != null)
+                return wellKnown;
+        }
+
+        // 3. Ask an external Python interpreter for prefix, version major, and version minor.
         string[] candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? new[] { "python", "python3" }
             : new[] { "python3", "python" };
@@ -270,6 +279,50 @@ public static class PythonSetup
             catch
             {
                 // This candidate isn't available on PATH — try the next one.
+            }
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
+    /// Search well-known Windows installation directories for a standalone Python install.
+    /// Prefers newer versions (3.12, 3.11, 3.10, ...) and skips Anaconda/Miniconda.
+    /// </summary>
+    private static (string? Home, string? Dll) FindStandalonePython()
+    {
+        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+        // Search these base directories for PythonXYZ folders
+        string[] baseDirs = new[]
+        {
+            Path.Combine(localAppData, "Programs", "Python"),  // Default per-user install
+            @"C:\Python",                                        // Legacy installs (C:\Python312, etc.)
+            @"C:\Program Files\Python",                          // All-users install
+            @"C:\Program Files (x86)\Python",
+        };
+
+        // Prefer newer versions first
+        int[] minors = { 12, 13, 11, 10, 9, 8 };
+
+        foreach (string baseDir in baseDirs)
+        {
+            foreach (int minor in minors)
+            {
+                string candidate = Path.Combine(baseDir, $"Python3{minor}");
+                // Also check flat paths like C:\Python312
+                string flatCandidate = $"{baseDir}3{minor}";
+
+                foreach (string home in new[] { candidate, flatCandidate })
+                {
+                    string dllPath = Path.Combine(home, $"python3{minor}.dll");
+                    if (File.Exists(dllPath) && Directory.Exists(Path.Combine(home, "Lib", "encodings")))
+                    {
+                        Console.WriteLine($"[PythonSetup] Found standalone Python 3.{minor} at {home}");
+                        return (home, dllPath);
+                    }
+                }
             }
         }
 
