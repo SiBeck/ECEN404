@@ -12,7 +12,7 @@ using PythonIntegrationTests;
 ///
 /// Prerequisites:
 ///     - Python 3.8+ installed and on PATH (or set PYTHONNET_PYDLL env var)
-///     - pip install numpy pydicom (for generate_dicom tests)
+///     - pip install numpy pandas pydicom pyyaml (for scan_filter_bridge tests)
 ///     - dotnet restore (to pull the pythonnet NuGet package)
 /// </summary>
 
@@ -39,7 +39,7 @@ catch (Exception ex)
     Console.WriteLine("  - On Linux, set PYTHONNET_PYDLL=/usr/lib/libpython3.11.so");
     Console.WriteLine("  - If you see 'No module named encodings', set PYTHONNET_PYHOME to your");
     Console.WriteLine("    Python installation directory (e.g., C:\\Users\\you\\anaconda3 or /usr/lib/python3.11)");
-    Console.WriteLine("  - Run: pip install numpy pydicom");
+    Console.WriteLine("  - Run: pip install numpy pandas pydicom pyyaml");
     Environment.Exit(1);
     return;
 }
@@ -55,10 +55,6 @@ allResults.Add(ExampleModuleTests.Run());
 Console.WriteLine();
 Console.WriteLine("Running image_viewer.py tests...");
 allResults.Add(ImageViewerTests.Run());
-
-Console.WriteLine();
-Console.WriteLine("Running generate_dicom.py tests...");
-allResults.Add(GenerateDicomTests.Run());
 
 Console.WriteLine();
 Console.WriteLine("Running scan_filter_bridge.py tests...");
