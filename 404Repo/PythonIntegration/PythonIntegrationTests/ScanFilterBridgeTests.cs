@@ -56,6 +56,12 @@ public static class ScanFilterBridgeTests
 
             results.RunTest("generate synthetic test data", () =>
             {
+                // Ensure venv site-packages is on sys.path BEFORE importing
+                // create_sample_inputs (which imports pydicom at the top level).
+                // Without this, Anaconda's older pydicom gets loaded instead of
+                // the venv's compatible version, causing serialization errors.
+                bridge._ensure_scan_filter_on_path();
+
                 // Add Scan Filter Code examples to path for create_sample_inputs
                 dynamic sys = Py.Import("sys");
                 string scanFilterCode = Path.Combine(PythonSetup.PythonScriptsPath, "Scan Filter Code");
