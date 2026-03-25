@@ -16,7 +16,26 @@ public static class ExampleModuleTests
 
         using (Py.GIL())
         {
-            dynamic example = Py.Import("example");
+            dynamic example;
+            try
+            {
+                example = Py.Import("example");
+            }
+            catch (PythonException ex)
+            {
+                results.RunTest("import example", () =>
+                {
+                    throw new Exception(
+                        $"Cannot import example module. Ensure PythonScripts is on sys.path. " +
+                        $"Error: {ex.Message}");
+                });
+                return results;
+            }
+
+            results.RunTest("import example", () =>
+            {
+                Assert.IsNotNull(example, "Example module should not be null");
+            });
 
             // Test: greet() returns correct greeting string
             results.RunTest("greet returns greeting string", () =>

@@ -1,3 +1,4 @@
+using Python.Runtime;
 using PythonIntegrationTests;
 
 /// <summary>
@@ -44,21 +45,86 @@ catch (Exception ex)
     return;
 }
 
+// Print diagnostic info to help debug path issues.
+// Output goes to both Console and Debug (VS Output window).
+void Diag(string msg)
+{
+    Console.WriteLine(msg);
+    System.Diagnostics.Debug.WriteLine(msg);
+}
+
+Diag($"[Diagnostics] PythonScripts path: {PythonSetup.PythonScriptsPath}");
+Diag($"[Diagnostics] Dummy code path:    {PythonSetup.DummyCodePath}");
+Diag($"[Diagnostics] PythonScripts exists: {Directory.Exists(PythonSetup.PythonScriptsPath)}");
+Diag($"[Diagnostics] Dummy code exists:    {Directory.Exists(PythonSetup.DummyCodePath)}");
+
+// Check that key Python files exist on disk.
+string examplePy = Path.Combine(PythonSetup.PythonScriptsPath, "example.py");
+string imageViewerPy = Path.Combine(PythonSetup.DummyCodePath, "image_viewer.py");
+string bridgePy = Path.Combine(PythonSetup.PythonScriptsPath, "scan_filter_bridge.py");
+Diag($"[Diagnostics] example.py exists:            {File.Exists(examplePy)}  ({examplePy})");
+Diag($"[Diagnostics] image_viewer.py exists:       {File.Exists(imageViewerPy)}  ({imageViewerPy})");
+Diag($"[Diagnostics] scan_filter_bridge.py exists: {File.Exists(bridgePy)}  ({bridgePy})");
+
+// Print Python sys.path for troubleshooting import failures.
+using (Py.GIL())
+{
+    dynamic sys = Py.Import("sys");
+    Diag("[Diagnostics] Python sys.path:");
+    foreach (var p in sys.path)
+        Diag($"  - {p}");
+}
+Console.WriteLine();
+
 var allResults = new List<TestResults>();
 
 // --- Run test suites ---
+// Each suite is wrapped in try/catch so that a crash in one doesn't prevent the others from running.
 
 Console.WriteLine();
 Console.WriteLine("Running example.py tests...");
-allResults.Add(ExampleModuleTests.Run());
+try
+{
+    allResults.Add(ExampleModuleTests.Run());
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  [CRASH] example.py suite threw an unhandled exception: {ex.Message}");
+    System.Diagnostics.Debug.WriteLine($"  [CRASH] example.py: {ex}");
+    var crash = new TestResults("example.py");
+    crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
+    allResults.Add(crash);
+}
 
 Console.WriteLine();
 Console.WriteLine("Running image_viewer.py tests...");
-allResults.Add(ImageViewerTests.Run());
+try
+{
+    allResults.Add(ImageViewerTests.Run());
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  [CRASH] image_viewer.py suite threw an unhandled exception: {ex.Message}");
+    System.Diagnostics.Debug.WriteLine($"  [CRASH] image_viewer.py: {ex}");
+    var crash = new TestResults("image_viewer.py");
+    crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
+    allResults.Add(crash);
+}
 
 Console.WriteLine();
 Console.WriteLine("Running scan_filter_bridge.py tests...");
-allResults.Add(ScanFilterBridgeTests.Run());
+try
+{
+    allResults.Add(ScanFilterBridgeTests.Run());
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  [CRASH] scan_filter_bridge.py suite threw an unhandled exception: {ex.Message}");
+    System.Diagnostics.Debug.WriteLine($"  [CRASH] scan_filter_bridge.py: {ex}");
+    var crash = new TestResults("scan_filter_bridge.py");
+    crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
+    allResults.Add(crash);
+}
 
 // --- Report ---
 
