@@ -20,26 +20,7 @@ public static class ImageViewerTests
 
         using (Py.GIL())
         {
-            dynamic imageViewer;
-            try
-            {
-                imageViewer = Py.Import("image_viewer");
-            }
-            catch (PythonException ex)
-            {
-                results.RunTest("import image_viewer", () =>
-                {
-                    throw new Exception(
-                        $"Cannot import image_viewer module. Ensure 'Dummy python code' directory " +
-                        $"is on sys.path. Error: {ex.Message}");
-                });
-                return results;
-            }
-
-            results.RunTest("import image_viewer", () =>
-            {
-                Assert.IsNotNull(imageViewer, "ImageViewer module should not be null");
-            });
+            dynamic imageViewer = Py.Import("image_viewer");
 
             // Test: get_image_info() on existing file
             results.RunTest("get_image_info returns metadata for existing file", () =>
