@@ -30,6 +30,11 @@ namespace _403DesktopApp
         public static string ScanFilterCodePath { get; private set; } = string.Empty;
 
         /// <summary>
+        /// Path to the FinalCode directory containing the cardiac_gating package.
+        /// </summary>
+        public static string FinalCodePath { get; private set; } = string.Empty;
+
+        /// <summary>
         /// Whether the Python runtime has been initialized.
         /// </summary>
         public static bool IsInitialized => _initialized;
@@ -47,6 +52,7 @@ namespace _403DesktopApp
 
             PythonScriptsPath = Path.Combine(repoRoot, "404Repo", "PythonScripts");
             ScanFilterCodePath = Path.Combine(PythonScriptsPath, "Scan Filter Code");
+            FinalCodePath = Path.Combine(repoRoot, "404Repo", "FinalCode");
 
             if (!Directory.Exists(PythonScriptsPath))
             {
@@ -108,12 +114,18 @@ namespace _403DesktopApp
                 {
                     sys.path.append(ScanFilterCodePath);
                 }
+
+                if (Directory.Exists(FinalCodePath))
+                {
+                    sys.path.append(FinalCodePath);
+                }
             }
 
             _initialized = true;
             System.Diagnostics.Debug.WriteLine($"[PythonSetup] Runtime initialized. Python {PythonEngine.Version}");
             System.Diagnostics.Debug.WriteLine($"[PythonSetup] Scripts path: {PythonScriptsPath}");
             System.Diagnostics.Debug.WriteLine($"[PythonSetup] Scan Filter Code path: {ScanFilterCodePath}");
+            System.Diagnostics.Debug.WriteLine($"[PythonSetup] FinalCode path: {FinalCodePath}");
         }
 
         /// <summary>

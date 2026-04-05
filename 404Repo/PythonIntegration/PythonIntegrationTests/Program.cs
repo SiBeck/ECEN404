@@ -62,9 +62,12 @@ Diag($"[Diagnostics] Dummy code exists:    {Directory.Exists(PythonSetup.DummyCo
 string examplePy = Path.Combine(PythonSetup.PythonScriptsPath, "example.py");
 string imageViewerPy = Path.Combine(PythonSetup.DummyCodePath, "image_viewer.py");
 string bridgePy = Path.Combine(PythonSetup.PythonScriptsPath, "scan_filter_bridge.py");
-Diag($"[Diagnostics] example.py exists:            {File.Exists(examplePy)}  ({examplePy})");
-Diag($"[Diagnostics] image_viewer.py exists:       {File.Exists(imageViewerPy)}  ({imageViewerPy})");
-Diag($"[Diagnostics] scan_filter_bridge.py exists: {File.Exists(bridgePy)}  ({bridgePy})");
+string cardiacBridgePy = Path.Combine(PythonSetup.PythonScriptsPath, "cardiac_gating_bridge.py");
+Diag($"[Diagnostics] example.py exists:                {File.Exists(examplePy)}  ({examplePy})");
+Diag($"[Diagnostics] image_viewer.py exists:           {File.Exists(imageViewerPy)}  ({imageViewerPy})");
+Diag($"[Diagnostics] scan_filter_bridge.py exists:     {File.Exists(bridgePy)}  ({bridgePy})");
+Diag($"[Diagnostics] cardiac_gating_bridge.py exists:  {File.Exists(cardiacBridgePy)}  ({cardiacBridgePy})");
+Diag($"[Diagnostics] FinalCode path:                   {PythonSetup.FinalCodePath}");
 
 // Print Python sys.path for troubleshooting import failures.
 using (Py.GIL())
@@ -122,6 +125,21 @@ catch (Exception ex)
     Console.WriteLine($"  [CRASH] scan_filter_bridge.py suite threw an unhandled exception: {ex.Message}");
     System.Diagnostics.Debug.WriteLine($"  [CRASH] scan_filter_bridge.py: {ex}");
     var crash = new TestResults("scan_filter_bridge.py");
+    crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
+    allResults.Add(crash);
+}
+
+Console.WriteLine();
+Console.WriteLine("Running cardiac_gating_bridge.py tests...");
+try
+{
+    allResults.Add(CardiacGatingBridgeTests.Run());
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  [CRASH] cardiac_gating_bridge.py suite threw an unhandled exception: {ex.Message}");
+    System.Diagnostics.Debug.WriteLine($"  [CRASH] cardiac_gating_bridge.py: {ex}");
+    var crash = new TestResults("cardiac_gating_bridge.py");
     crash.RunTest("suite execution", () => { throw new Exception($"Unhandled: {ex.Message}"); });
     allResults.Add(crash);
 }
