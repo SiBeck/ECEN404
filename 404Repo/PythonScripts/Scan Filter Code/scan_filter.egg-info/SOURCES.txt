@@ -1,4 +1,3 @@
-README.md
 pyproject.toml
 scan_filter/__init__.py
 scan_filter/config.py
@@ -21,5 +20,7 @@ scan_filter/io/dicom_writer.py
 scan_filter/utils/statistics.py
 scan_filter/utils/windowing.py
 tests/test_alignment.py
+tests/test_bridge.py
 tests/test_cycle_detection.py
 tests/test_filter_engine.py
+tests/test_pipeline_integration.py

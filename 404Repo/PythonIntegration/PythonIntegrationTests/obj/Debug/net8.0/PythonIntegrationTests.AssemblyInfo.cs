@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PythonIntegrationTests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9bab79e3f94535b97b8af9581f9f5013d445bc6d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ea7b028a9e4c62dc01730761bf18e2afa86c0759")]
 [assembly: System.Reflection.AssemblyProductAttribute("PythonIntegrationTests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PythonIntegrationTests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
