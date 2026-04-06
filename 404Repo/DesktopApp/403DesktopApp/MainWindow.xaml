@@ -318,6 +318,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <!-- Heart Rate CSV Selection -->
@@ -415,13 +416,18 @@
                                         Background="#E0E0E0"
                                         BorderThickness="0"
                                         Cursor="Hand"/>
+                            </StackPanel>
 
+                            <!-- Result / Error Display -->
+                            <ScrollViewer Grid.Row="3" MaxHeight="120"
+                                          VerticalScrollBarVisibility="Auto"
+                                          Margin="0,5,0,0">
                                 <TextBlock Text="{Binding GatingResultSummary}"
-                                           VerticalAlignment="Center"
-                                           FontStyle="Italic"
+                                           FontFamily="Consolas"
+                                           FontSize="11"
                                            Foreground="#555555"
                                            TextWrapping="Wrap"/>
-                            </StackPanel>
+                            </ScrollViewer>
                         </Grid>
                     </Border>
 

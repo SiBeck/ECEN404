@@ -23,57 +23,27 @@ def _ensure_cardiac_gating_on_path():
     if final_code_dir not in sys.path:
         sys.path.insert(0, final_code_dir)
 
-    # When Python is embedded via Python.NET, installed packages (pyyaml,
-    # numpy, pydicom) may not be on sys.path. Explicitly add site-packages
-    # from the Python installation prefix and any user site-packages.
-    _add_site_packages()
 
-    # Also add venv site-packages if present inside FinalCode.
-    venv_dir = os.path.join(final_code_dir, ".venv")
-    if os.path.isdir(venv_dir):
-        if sys.platform == "win32":
-            sp = os.path.join(venv_dir, "Lib", "site-packages")
-        else:
-            ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-            sp = os.path.join(venv_dir, "lib", f"python{ver}", "site-packages")
-        if os.path.isdir(sp) and sp not in sys.path:
-            sys.path.insert(0, sp)
-
-
-def _add_site_packages():
-    """Explicitly add site-packages directories to sys.path for embedded Python."""
-    ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-    candidates = []
-
-    if sys.platform == "win32":
-        # Standard Python on Windows: <prefix>\Lib\site-packages
-        candidates.append(os.path.join(sys.prefix, "Lib", "site-packages"))
-        # Per-user installs on Windows
-        appdata = os.environ.get("APPDATA", "")
-        if appdata:
-            candidates.append(os.path.join(appdata, "Python", f"Python{sys.version_info.major}{sys.version_info.minor}", "site-packages"))
-    else:
-        candidates.append(os.path.join(sys.prefix, "lib", f"python{ver}", "site-packages"))
-
-    # Also check sys.base_prefix (differs from sys.prefix inside a venv)
-    if sys.base_prefix != sys.prefix:
-        if sys.platform == "win32":
-            candidates.append(os.path.join(sys.base_prefix, "Lib", "site-packages"))
-        else:
-            candidates.append(os.path.join(sys.base_prefix, "lib", f"python{ver}", "site-packages"))
-
-    for sp in candidates:
-        if os.path.isdir(sp) and sp not in sys.path:
-            sys.path.insert(0, sp)
+def get_diagnostics():
+    """Return a diagnostic string with Python runtime info for troubleshooting."""
+    lines = [
+        f"sys.executable: {sys.executable}",
+        f"sys.prefix: {sys.prefix}",
+        f"sys.base_prefix: {sys.base_prefix}",
+        f"sys.version: {sys.version}",
+        f"sys.platform: {sys.platform}",
+        f"PYTHONHOME: {os.environ.get('PYTHONHOME', '<not set>')}",
+        f"PYTHONPATH: {os.environ.get('PYTHONPATH', '<not set>')}",
+        "sys.path:",
+    ]
+    for p in sys.path:
+        lines.append(f"  - {p}")
+    return "\n".join(lines)
 
 
 def validate_inputs(csv_path, mrd_file):
     """
     Check that the cardiogram CSV and MRD file exist and are valid.
-
-    Args:
-        csv_path: Path to the cardiogram CSV file.
-        mrd_file: Path to the MRD scan file.
 
     Returns:
         dict with keys: valid, csv_exists, mrd_exists, error
@@ -107,13 +77,6 @@ def run_cardiac_gating(csv_path, mrd_file, output_dir, config_path=None):
     """
     Run the full cardiac gating pipeline.
 
-    Args:
-        csv_path: Path to the cardiogram CSV file.
-        mrd_file: Path to the MRD scan file.
-        output_dir: Destination folder for gated DICOM frames.
-        config_path: Optional path to a YAML configuration file.
-                     If None, uses the default config shipped with FinalCode.
-
     Returns:
         dict with keys: success, accepted_frames, rejected_frames,
         stable_cycles, alignment_offset_ms, output_dir, error
@@ -124,9 +87,7 @@ def run_cardiac_gating(csv_path, mrd_file, output_dir, config_path=None):
         from cardiac_gating.config import ScanFilterConfig
         from cardiac_gating.pipeline import ScanFilterPipeline
 
-        # Load configuration.
-        # ScanFilterConfig.load() requires pyyaml. If yaml is not installed,
-        # fall back to the built-in dataclass defaults (which are reasonable).
+        # Load configuration (falls back to defaults if pyyaml missing)
         cfg = None
         try:
             if config_path and os.path.isfile(config_path):
@@ -140,7 +101,7 @@ def run_cardiac_gating(csv_path, mrd_file, output_dir, config_path=None):
                 if os.path.isfile(default_cfg):
                     cfg = ScanFilterConfig.load(default_cfg)
         except ImportError:
-            pass  # pyyaml not available; use defaults
+            pass
 
         if cfg is None:
             cfg = ScanFilterConfig()
@@ -158,6 +119,9 @@ def run_cardiac_gating(csv_path, mrd_file, output_dir, config_path=None):
             "error": "",
         }
     except Exception as e:
+        # Include full diagnostics so the user can see which Python is
+        # being used and what paths are configured.
+        diag = get_diagnostics()
         return {
             "success": False,
             "accepted_frames": 0,
@@ -165,11 +129,13 @@ def run_cardiac_gating(csv_path, mrd_file, output_dir, config_path=None):
             "stable_cycles": 0,
             "alignment_offset_ms": 0.0,
             "output_dir": str(output_dir) if output_dir else "",
-            "error": str(e),
+            "error": f"{e}\n\n--- Python Diagnostics ---\n{diag}",
         }
 
 
 if __name__ == "__main__":
     print("=== Cardiac Gating Bridge Self-Test ===")
+    print(get_diagnostics())
+    print()
     print(f"validate_inputs('nonexistent.csv', 'nonexistent.mrd'):")
     print(f"  {validate_inputs('nonexistent.csv', 'nonexistent.mrd')}")

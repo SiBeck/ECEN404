@@ -616,8 +616,11 @@ namespace _403DesktopApp
                 }
                 else
                 {
-                    StatusText = $"Cardiac gating failed: {result.Error}";
-                    GatingResultSummary = "";
+                    // Show short message in status bar, full error + diagnostics in summary
+                    string firstLine = result.Error.Split('\n')[0];
+                    StatusText = $"Cardiac gating failed: {firstLine}";
+                    GatingResultSummary = result.Error;
+                    System.Diagnostics.Debug.WriteLine($"[CardiacGating] Error:\n{result.Error}");
                 }
             }
             catch (Exception ex)
