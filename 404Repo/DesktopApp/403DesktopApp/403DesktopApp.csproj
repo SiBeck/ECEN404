@@ -15,6 +15,12 @@
     <Folder Include="Views\" />
   </ItemGroup>
 
+  <!-- Remove the implicit global using for System.Windows.Forms to avoid
+       ambiguous references with WPF types (Application, MouseEventArgs, etc.) -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="fo-dicom" Version="5.2.4" />
     <PackageReference Include="pythonnet" Version="3.0.4" />
