@@ -23,6 +23,12 @@ def _ensure_cardiac_gating_on_path():
     if final_code_dir not in sys.path:
         sys.path.insert(0, final_code_dir)
 
+    # Ensure the Python installation's site-packages are on sys.path.
+    # When Python is embedded via Python.NET, the site module may not have
+    # run, so packages like pyyaml/numpy/pydicom are not discoverable.
+    import site
+    site.main()
+
     # Also add venv site-packages if present, so numpy/pydicom/pyyaml are available.
     venv_dir = os.path.join(final_code_dir, ".venv")
     if os.path.isdir(venv_dir):
