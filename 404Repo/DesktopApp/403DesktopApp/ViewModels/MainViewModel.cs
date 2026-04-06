@@ -35,6 +35,8 @@ namespace _403DesktopApp
         private readonly CardiacGatingService _cardiacGatingService = new();
         private bool _isGatingRunning;
         private string _gatingResultSummary = "";
+        private string _selectedCsvPath = "";
+        private string _selectedMrdPath = "";
 
         public string CurrentPage
         {
@@ -149,6 +151,41 @@ namespace _403DesktopApp
             set { _gatingResultSummary = value; OnPropertyChanged(); }
         }
 
+        public string SelectedCsvPath
+        {
+            get => _selectedCsvPath;
+            set
+            {
+                _selectedCsvPath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedCsvFileName));
+                OnPropertyChanged(nameof(CanRunGating));
+            }
+        }
+
+        public string SelectedMrdPath
+        {
+            get => _selectedMrdPath;
+            set
+            {
+                _selectedMrdPath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedMrdFileName));
+                OnPropertyChanged(nameof(CanRunGating));
+            }
+        }
+
+        public string SelectedCsvFileName =>
+            string.IsNullOrEmpty(_selectedCsvPath) ? "No file selected" : Path.GetFileName(_selectedCsvPath);
+
+        public string SelectedMrdFileName =>
+            string.IsNullOrEmpty(_selectedMrdPath) ? "No file selected" : Path.GetFileName(_selectedMrdPath);
+
+        public bool CanRunGating =>
+            !_isGatingRunning
+            && !string.IsNullOrEmpty(_selectedCsvPath)
+            && !string.IsNullOrEmpty(_selectedMrdPath);
+
         public ICommand NavigateCommand { get; }
         public ICommand SubmitCommand { get; }
         public ICommand OpenImageCommand { get; }
@@ -161,6 +198,9 @@ namespace _403DesktopApp
         public ICommand FirstFrameCommand { get; }
         public ICommand LastFrameCommand { get; }
         public ICommand RunScanFilterCommand { get; }
+        public ICommand BrowseCsvCommand { get; }
+        public ICommand BrowseMrdCommand { get; }
+        public ICommand ClearGatingInputsCommand { get; }
         public ICommand RunCardiacGatingCommand { get; }
 
         public MainViewModel()
@@ -177,7 +217,10 @@ namespace _403DesktopApp
             FirstFrameCommand = new RelayCommand(FirstFrame, CanGoPreviousFrame);
             LastFrameCommand = new RelayCommand(LastFrame, CanGoNextFrame);
             RunScanFilterCommand = new RelayCommand(RunScanFilter, _ => !_isFilterRunning);
-            RunCardiacGatingCommand = new RelayCommand(RunCardiacGating, _ => !_isGatingRunning);
+            BrowseCsvCommand = new RelayCommand(BrowseCsv);
+            BrowseMrdCommand = new RelayCommand(BrowseMrd);
+            ClearGatingInputsCommand = new RelayCommand(ClearGatingInputs);
+            RunCardiacGatingCommand = new RelayCommand(RunCardiacGating, _ => CanRunGating);
         }
 
         private void Navigate(object parameter)
@@ -501,31 +544,54 @@ namespace _403DesktopApp
             LoadCurrentFrame();
         }
 
-        private async void RunCardiacGating(object parameter)
+        private void BrowseCsv(object parameter)
         {
-            // Step 1: Select cardiogram CSV
-            var csvDialog = new OpenFileDialog
+            var dialog = new OpenFileDialog
             {
-                Title = "Select Cardiogram CSV File",
+                Title = "Select Heart Rate / Cardiogram CSV",
                 Filter = "CSV Files|*.csv|All Files|*.*",
                 FilterIndex = 1
             };
 
-            if (csvDialog.ShowDialog() != true) return;
-            string csvPath = csvDialog.FileName;
+            if (dialog.ShowDialog() == true)
+            {
+                SelectedCsvPath = dialog.FileName;
+                StatusText = $"CSV selected: {SelectedCsvFileName}";
+            }
+        }
 
-            // Step 2: Select MRD file
-            var mrdDialog = new OpenFileDialog
+        private void BrowseMrd(object parameter)
+        {
+            var dialog = new OpenFileDialog
             {
                 Title = "Select MRD Scan File",
                 Filter = "MRD Files|*.mrd|All Files|*.*",
                 FilterIndex = 1
             };
 
-            if (mrdDialog.ShowDialog() != true) return;
-            string mrdFile = mrdDialog.FileName;
+            if (dialog.ShowDialog() == true)
+            {
+                SelectedMrdPath = dialog.FileName;
+                StatusText = $"MRD selected: {SelectedMrdFileName}";
+            }
+        }
 
-            // Step 3: Run the cardiac gating pipeline
+        private void ClearGatingInputs(object parameter)
+        {
+            SelectedCsvPath = "";
+            SelectedMrdPath = "";
+            GatingResultSummary = "";
+            StatusText = "Cardiac gating inputs cleared";
+        }
+
+        private async void RunCardiacGating(object parameter)
+        {
+            if (string.IsNullOrEmpty(_selectedCsvPath) || string.IsNullOrEmpty(_selectedMrdPath))
+            {
+                StatusText = "Please select both a CSV and MRD file first.";
+                return;
+            }
+
             IsGatingRunning = true;
             GatingResultSummary = "";
             StatusText = "Initializing Python runtime...";
@@ -540,7 +606,7 @@ namespace _403DesktopApp
                 StatusText = "Running cardiac gating pipeline...";
 
                 var result = await _cardiacGatingService.RunGatingAsync(
-                    csvPath, mrdFile, outputDir);
+                    _selectedCsvPath, _selectedMrdPath, outputDir);
 
                 if (result.Success)
                 {

@@ -298,6 +298,203 @@
                 </Grid>
             </TabItem>
 
+            <!-- Cardiac Gating Tab -->
+            <TabItem Header="Cardiac Gating">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Input Selection Panel -->
+                    <Border Grid.Row="0"
+                            Background="{StaticResource SecondaryColor}"
+                            Padding="15"
+                            BorderBrush="#CCCCCC"
+                            BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Heart Rate CSV Selection -->
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="Heart Rate CSV:"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold"/>
+
+                                <Border Grid.Column="1"
+                                        Background="White"
+                                        BorderBrush="#AAAAAA"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        Padding="8,5"
+                                        Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding SelectedCsvFileName}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding SelectedCsvPath}"
+                                               Foreground="{Binding SelectedCsvPath, Converter={x:Null}, FallbackValue=#888888}"/>
+                                </Border>
+
+                                <Button Grid.Column="2"
+                                        Content="Browse..."
+                                        Command="{Binding BrowseCsvCommand}"
+                                        Padding="15,5"
+                                        Background="#007ACC"
+                                        Foreground="White"
+                                        BorderThickness="0"
+                                        Cursor="Hand"/>
+                            </Grid>
+
+                            <!-- MRD File Selection -->
+                            <Grid Grid.Row="1" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="MRI Data (MRD):"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold"/>
+
+                                <Border Grid.Column="1"
+                                        Background="White"
+                                        BorderBrush="#AAAAAA"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        Padding="8,5"
+                                        Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding SelectedMrdFileName}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding SelectedMrdPath}"
+                                               Foreground="{Binding SelectedMrdPath, Converter={x:Null}, FallbackValue=#888888}"/>
+                                </Border>
+
+                                <Button Grid.Column="2"
+                                        Content="Browse..."
+                                        Command="{Binding BrowseMrdCommand}"
+                                        Padding="15,5"
+                                        Background="#007ACC"
+                                        Foreground="White"
+                                        BorderThickness="0"
+                                        Cursor="Hand"/>
+                            </Grid>
+
+                            <!-- Action Buttons and Status -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="Run Cardiac Gating"
+                                        Command="{Binding RunCardiacGatingCommand}"
+                                        Padding="20,8"
+                                        Margin="0,0,10,0"
+                                        Background="#28A745"
+                                        Foreground="White"
+                                        FontWeight="SemiBold"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        IsEnabled="{Binding CanRunGating}"
+                                        ToolTip="Select both files above, then click to run"/>
+
+                                <Button Content="Clear"
+                                        Command="{Binding ClearGatingInputsCommand}"
+                                        Padding="15,8"
+                                        Margin="0,0,15,0"
+                                        Background="#E0E0E0"
+                                        BorderThickness="0"
+                                        Cursor="Hand"/>
+
+                                <TextBlock Text="{Binding GatingResultSummary}"
+                                           VerticalAlignment="Center"
+                                           FontStyle="Italic"
+                                           Foreground="#555555"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Gated Image Display Area -->
+                    <Border Grid.Row="1"
+                            Background="#2B2B2B"
+                            BorderBrush="#CCCCCC"
+                            BorderThickness="1">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto">
+                            <Image Source="{Binding CurrentImageSource}"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   Stretch="None">
+                                <Image.LayoutTransform>
+                                    <ScaleTransform ScaleX="{Binding ZoomLevel}"
+                                                    ScaleY="{Binding ZoomLevel}"/>
+                                </Image.LayoutTransform>
+                            </Image>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Gating Info Bar with Frame Navigation -->
+                    <Border Grid.Row="2"
+                            Background="{StaticResource SecondaryColor}"
+                            Padding="10"
+                            BorderBrush="#CCCCCC"
+                            BorderThickness="0,1,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding ImageInfo}"
+                                       VerticalAlignment="Center"/>
+
+                            <!-- Frame navigation -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0">
+                                <Button Content="|&#9668;"
+                                        Command="{Binding FirstFrameCommand}"
+                                        Padding="8,4" Margin="0,0,3,0"
+                                        Background="#F5F5F5" BorderThickness="1" BorderBrush="#CCCCCC" Cursor="Hand"/>
+                                <Button Content="&#9668;"
+                                        Command="{Binding PreviousFrameCommand}"
+                                        Padding="10,4" Margin="0,0,3,0"
+                                        Background="#F5F5F5" BorderThickness="1" BorderBrush="#CCCCCC" Cursor="Hand"/>
+                                <TextBlock Text="{Binding FrameInfo}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0"
+                                           MinWidth="100"
+                                           TextAlignment="Center"
+                                           FontWeight="SemiBold"/>
+                                <Button Content="&#9658;"
+                                        Command="{Binding NextFrameCommand}"
+                                        Padding="10,4" Margin="0,0,3,0"
+                                        Background="#F5F5F5" BorderThickness="1" BorderBrush="#CCCCCC" Cursor="Hand"/>
+                                <Button Content="&#9658;|"
+                                        Command="{Binding LastFrameCommand}"
+                                        Padding="8,4"
+                                        Background="#F5F5F5" BorderThickness="1" BorderBrush="#CCCCCC" Cursor="Hand"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding ImageDimensions}"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
         <!-- Status Bar -->
