@@ -166,6 +166,18 @@ public static class PythonSetup
         using (Py.GIL())
         {
             dynamic sys = Py.Import("sys");
+
+            // Inject the real site-packages paths detected from the external
+            // Python interpreter so third-party packages are discoverable.
+            foreach (string sp in detected.SitePackagesPaths)
+            {
+                if (Directory.Exists(sp))
+                {
+                    sys.path.append(sp);
+                    Console.WriteLine($"[PythonSetup] Added site-packages: {sp}");
+                }
+            }
+
             sys.path.append(PythonScriptsPath);
             sys.path.append(DummyCodePath);
 
@@ -208,15 +220,15 @@ public static class PythonSetup
     /// (prefix), version, and shared library path. This works even when embedding
     /// fails because we spawn a separate process with its own correctly-configured runtime.
     /// </summary>
-    private static (string? Home, string? Dll) DetectPythonInfo()
+    private static (string? Home, string? Dll, List<string> SitePackagesPaths) DetectPythonInfo()
     {
         // 1. Check if PYTHONHOME is already set in the environment.
         string? envHome = Environment.GetEnvironmentVariable("PYTHONHOME");
         if (!string.IsNullOrEmpty(envHome) && Directory.Exists(envHome))
         {
-            // Try to derive the DLL name from PYTHONHOME by scanning for pythonXY.dll / libpythonX.Y.so
             string? dll = FindPythonDllInHome(envHome);
-            return (envHome, dll);
+            var sitePaths = QuerySitePackages(envHome);
+            return (envHome, dll, sitePaths);
         }
 
         // 2. On Windows, check well-known standalone Python install locations FIRST,
@@ -225,7 +237,10 @@ public static class PythonSetup
         {
             var wellKnown = FindStandalonePython();
             if (wellKnown.Home != null)
-                return wellKnown;
+            {
+                var sitePaths = QuerySitePackages(wellKnown.Home);
+                return (wellKnown.Home, wellKnown.Dll, sitePaths);
+            }
         }
 
         // 3. Ask an external Python interpreter for prefix, version major, and version minor.
@@ -241,7 +256,7 @@ public static class PythonSetup
                 var psi = new ProcessStartInfo
                 {
                     FileName = exe,
-                    Arguments = "-c \"import sys; print(sys.prefix); print(sys.version_info.major); print(sys.version_info.minor); print(sys.executable)\"",
+                    Arguments = "-c \"import sys, site; print(sys.prefix); print(sys.version_info.major); print(sys.version_info.minor); print(sys.executable); sp = site.getsitepackages() if hasattr(site, 'getsitepackages') else []; usp = site.getusersitepackages() if hasattr(site, 'getusersitepackages') else ''; print('|'.join(sp + ([usp] if usp else [])))\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -305,7 +320,22 @@ public static class PythonSetup
                     dllPath = searchPaths.FirstOrDefault(File.Exists) ?? soName;
                 }
 
-                return (prefix, dllPath);
+                // Parse site-packages paths (line 5, pipe-separated)
+                var detectedSitePaths = new List<string>();
+                if (lines.Length >= 5 && !string.IsNullOrWhiteSpace(lines[4]))
+                {
+                    foreach (string sp in lines[4].Trim().Split('|', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        string trimmed = sp.Trim();
+                        if (!string.IsNullOrEmpty(trimmed))
+                            detectedSitePaths.Add(trimmed);
+                    }
+                }
+
+                foreach (string sp in detectedSitePaths)
+                    Console.WriteLine($"[PythonSetup] Detected site-packages: {sp}");
+
+                return (prefix, dllPath, detectedSitePaths);
             }
             catch
             {
@@ -313,7 +343,51 @@ public static class PythonSetup
             }
         }
 
-        return (null, null);
+        return (null, null, new List<string>());
+    }
+
+    /// <summary>
+    /// Query site-packages paths from a specific Python home by running the interpreter.
+    /// </summary>
+    private static List<string> QuerySitePackages(string home)
+    {
+        var paths = new List<string>();
+        string interpreter = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? Path.Combine(home, "python.exe")
+            : Path.Combine(home, "bin", "python3");
+
+        if (!File.Exists(interpreter)) return paths;
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = interpreter,
+                Arguments = "-c \"import site; sp = site.getsitepackages() if hasattr(site, 'getsitepackages') else []; usp = site.getusersitepackages() if hasattr(site, 'getusersitepackages') else ''; print('|'.join(sp + ([usp] if usp else [])))\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            psi.Environment["PYTHONHOME"] = "";
+
+            using var process = Process.Start(psi);
+            if (process == null) return paths;
+
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            if (process.ExitCode != 0) return paths;
+
+            foreach (string sp in output.Trim().Split('|', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string trimmed = sp.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                    paths.Add(trimmed);
+            }
+        }
+        catch { }
+
+        return paths;
     }
 
     /// <summary>

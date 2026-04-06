@@ -7,7 +7,6 @@ namespace _403DesktopApp
 {
     /// <summary>
     /// Manages the Python.NET runtime lifecycle for the desktop application.
-    /// Adapted from PythonIntegrationTests/PythonSetup.cs.
     ///
     /// Initialization order for pythonnet 3.0+:
     ///   1. Set Runtime.PythonDLL
@@ -19,30 +18,11 @@ namespace _403DesktopApp
     {
         private static bool _initialized;
 
-        /// <summary>
-        /// Path to the PythonScripts directory.
-        /// </summary>
         public static string PythonScriptsPath { get; private set; } = string.Empty;
-
-        /// <summary>
-        /// Path to the Scan Filter Code directory containing the scan_filter package.
-        /// </summary>
         public static string ScanFilterCodePath { get; private set; } = string.Empty;
-
-        /// <summary>
-        /// Path to the FinalCode directory containing the cardiac_gating package.
-        /// </summary>
         public static string FinalCodePath { get; private set; } = string.Empty;
-
-        /// <summary>
-        /// Whether the Python runtime has been initialized.
-        /// </summary>
         public static bool IsInitialized => _initialized;
 
-        /// <summary>
-        /// Initialize the Python.NET runtime and configure sys.path.
-        /// This method is idempotent.
-        /// </summary>
         public static void Initialize(string? pythonDll = null, string? pythonHome = null)
         {
             if (_initialized) return;
@@ -61,6 +41,9 @@ namespace _403DesktopApp
                     $"Searched from base directory: {baseDir}");
             }
 
+            // Detect the Python installation by querying the real interpreter.
+            // This returns the home dir, DLL path, AND the actual site-packages
+            // paths where third-party packages (numpy, pydicom, pyyaml) live.
             var detected = DetectPythonInfo();
             string? resolvedHome = pythonHome ?? detected.Home;
             string? resolvedDll = pythonDll ?? detected.Dll;
@@ -104,77 +87,64 @@ namespace _403DesktopApp
             // Step 4: Initialize the Python runtime
             PythonEngine.Initialize();
 
-            // Add script directories to sys.path
+            // Add all required directories to sys.path
             using (Py.GIL())
             {
                 dynamic sys = Py.Import("sys");
 
-                // Ensure the Python installation's site-packages is on sys.path.
-                // Embedded Python.NET may not run the site module, so installed
-                // packages (pyyaml, numpy, pydicom) are not discoverable by default.
-                string pythonPrefix = (string)sys.prefix;
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                // Inject the real site-packages paths detected from the external
+                // Python interpreter. The embedded runtime often does NOT include
+                // these, which causes "No module named numpy/yaml/pydicom" errors.
+                foreach (string sp in detected.SitePackagesPaths)
                 {
-                    string sitePackages = Path.Combine(pythonPrefix, "Lib", "site-packages");
-                    if (Directory.Exists(sitePackages))
-                        sys.path.append(sitePackages);
-                }
-                else
-                {
-                    string pyVer = $"{(int)sys.version_info.major}.{(int)sys.version_info.minor}";
-                    string sitePackages = Path.Combine(pythonPrefix, "lib", $"python{pyVer}", "site-packages");
-                    if (Directory.Exists(sitePackages))
-                        sys.path.append(sitePackages);
+                    if (Directory.Exists(sp))
+                    {
+                        sys.path.append(sp);
+                        System.Diagnostics.Debug.WriteLine($"[PythonSetup] Added site-packages: {sp}");
+                    }
                 }
 
                 sys.path.append(PythonScriptsPath);
 
                 if (Directory.Exists(ScanFilterCodePath))
-                {
                     sys.path.append(ScanFilterCodePath);
-                }
 
                 if (Directory.Exists(FinalCodePath))
-                {
                     sys.path.append(FinalCodePath);
-                }
 
-                // Log sys.path for diagnostics
-                System.Diagnostics.Debug.WriteLine("[PythonSetup] sys.path:");
+                // Log full sys.path for diagnostics
+                System.Diagnostics.Debug.WriteLine("[PythonSetup] Final sys.path:");
                 foreach (var p in sys.path)
                     System.Diagnostics.Debug.WriteLine($"  - {p}");
             }
 
             // Release the GIL so background threads can acquire it via Py.GIL().
-            // Without this, Task.Run calls that use Py.GIL() will deadlock because
-            // the main thread holds the GIL after PythonEngine.Initialize().
             PythonEngine.BeginAllowThreads();
 
             _initialized = true;
             System.Diagnostics.Debug.WriteLine($"[PythonSetup] Runtime initialized. Python {PythonEngine.Version}");
-            System.Diagnostics.Debug.WriteLine($"[PythonSetup] Scripts path: {PythonScriptsPath}");
-            System.Diagnostics.Debug.WriteLine($"[PythonSetup] Scan Filter Code path: {ScanFilterCodePath}");
-            System.Diagnostics.Debug.WriteLine($"[PythonSetup] FinalCode path: {FinalCodePath}");
         }
 
-        /// <summary>
-        /// Shut down the Python.NET runtime.
-        /// </summary>
         public static void Shutdown()
         {
             if (!_initialized) return;
             PythonEngine.Shutdown();
             _initialized = false;
-            System.Diagnostics.Debug.WriteLine("[PythonSetup] Runtime shut down.");
         }
 
-        private static (string? Home, string? Dll) DetectPythonInfo()
+        /// <summary>
+        /// Query an external Python interpreter to detect the installation directory,
+        /// shared library path, and — critically — the real site-packages paths where
+        /// third-party packages are installed.
+        /// </summary>
+        private static (string? Home, string? Dll, List<string> SitePackagesPaths) DetectPythonInfo()
         {
             string? envHome = Environment.GetEnvironmentVariable("PYTHONHOME");
             if (!string.IsNullOrEmpty(envHome) && Directory.Exists(envHome))
             {
                 string? dll = FindPythonDllInHome(envHome);
-                return (envHome, dll);
+                var sitePaths = QuerySitePackages(null, envHome);
+                return (envHome, dll, sitePaths);
             }
 
             string[] candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
@@ -185,10 +155,19 @@ namespace _403DesktopApp
             {
                 try
                 {
+                    // Query prefix, version, executable, AND site-packages in one call.
                     var psi = new ProcessStartInfo
                     {
                         FileName = exe,
-                        Arguments = "-c \"import sys; print(sys.prefix); print(sys.version_info.major); print(sys.version_info.minor)\"",
+                        Arguments = "-c \"" +
+                            "import sys, site; " +
+                            "print(sys.prefix); " +
+                            "print(sys.version_info.major); " +
+                            "print(sys.version_info.minor); " +
+                            "print(sys.executable); " +
+                            "sp = site.getsitepackages() if hasattr(site, 'getsitepackages') else []; " +
+                            "usp = site.getusersitepackages() if hasattr(site, 'getusersitepackages') else ''; " +
+                            "print('|'.join(sp + ([usp] if usp else [])))\"",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
@@ -202,16 +181,32 @@ namespace _403DesktopApp
                     if (process.ExitCode != 0) continue;
 
                     string[] lines = output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                    if (lines.Length < 3) continue;
+                    if (lines.Length < 4) continue;
 
                     string prefix = lines[0].Trim();
                     string major = lines[1].Trim();
                     string minor = lines[2].Trim();
+                    string exePath = lines[3].Trim();
 
                     if (!Directory.Exists(prefix)) continue;
 
-                    System.Diagnostics.Debug.WriteLine($"[PythonSetup] Auto-detected via '{exe}': Python {major}.{minor} at {prefix}");
+                    // Parse site-packages paths (line 5, pipe-separated)
+                    var sitePackages = new List<string>();
+                    if (lines.Length >= 5 && !string.IsNullOrWhiteSpace(lines[4]))
+                    {
+                        foreach (string sp in lines[4].Trim().Split('|', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            string trimmed = sp.Trim();
+                            if (!string.IsNullOrEmpty(trimmed))
+                                sitePackages.Add(trimmed);
+                        }
+                    }
 
+                    System.Diagnostics.Debug.WriteLine($"[PythonSetup] Auto-detected via '{exe}': Python {major}.{minor} at {prefix}");
+                    foreach (string sp in sitePackages)
+                        System.Diagnostics.Debug.WriteLine($"[PythonSetup] Detected site-packages: {sp}");
+
+                    // Derive the shared library path
                     string? dllPath = null;
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
@@ -233,7 +228,7 @@ namespace _403DesktopApp
                         dllPath = searchPaths.FirstOrDefault(File.Exists) ?? soName;
                     }
 
-                    return (prefix, dllPath);
+                    return (prefix, dllPath, sitePackages);
                 }
                 catch
                 {
@@ -241,7 +236,52 @@ namespace _403DesktopApp
                 }
             }
 
-            return (null, null);
+            return (null, null, new List<string>());
+        }
+
+        /// <summary>
+        /// Query site-packages paths from a specific Python home by running the interpreter.
+        /// </summary>
+        private static List<string> QuerySitePackages(string? exe, string home)
+        {
+            var paths = new List<string>();
+            string interpreter = exe ?? (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? Path.Combine(home, "python.exe")
+                : Path.Combine(home, "bin", "python3"));
+
+            if (!File.Exists(interpreter)) return paths;
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = interpreter,
+                    Arguments = "-c \"import site; sp = site.getsitepackages() if hasattr(site, 'getsitepackages') else []; usp = site.getusersitepackages() if hasattr(site, 'getusersitepackages') else ''; print('|'.join(sp + ([usp] if usp else [])))\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                // Clear PYTHONHOME so the subprocess uses its own defaults
+                psi.Environment["PYTHONHOME"] = "";
+
+                using var process = Process.Start(psi);
+                if (process == null) return paths;
+
+                string output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+                if (process.ExitCode != 0) return paths;
+
+                foreach (string sp in output.Trim().Split('|', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    string trimmed = sp.Trim();
+                    if (!string.IsNullOrEmpty(trimmed))
+                        paths.Add(trimmed);
+                }
+            }
+            catch { }
+
+            return paths;
         }
 
         private static string? FindPythonDllInHome(string home)
