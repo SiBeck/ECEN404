@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 
 @dataclass
@@ -56,6 +59,11 @@ class ScanFilterConfig:
 
     @classmethod
     def load(cls, path: str | Path) -> "ScanFilterConfig":
+        if yaml is None:
+            raise ImportError(
+                "pyyaml is required to load YAML config files. "
+                "Install it with: pip install pyyaml"
+            )
         with open(path, "r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle) or {}
         return cls.from_dict(data)

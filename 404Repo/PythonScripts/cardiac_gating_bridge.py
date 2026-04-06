@@ -124,20 +124,26 @@ def run_cardiac_gating(csv_path, mrd_file, output_dir, config_path=None):
         from cardiac_gating.config import ScanFilterConfig
         from cardiac_gating.pipeline import ScanFilterPipeline
 
-        # Load configuration
-        if config_path and os.path.isfile(config_path):
-            cfg = ScanFilterConfig.load(config_path)
-        else:
-            # Use default config from the FinalCode directory
-            default_cfg = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                os.pardir, "FinalCode", "config", "default.yaml"
-            )
-            default_cfg = os.path.normpath(default_cfg)
-            if os.path.isfile(default_cfg):
-                cfg = ScanFilterConfig.load(default_cfg)
+        # Load configuration.
+        # ScanFilterConfig.load() requires pyyaml. If yaml is not installed,
+        # fall back to the built-in dataclass defaults (which are reasonable).
+        cfg = None
+        try:
+            if config_path and os.path.isfile(config_path):
+                cfg = ScanFilterConfig.load(config_path)
             else:
-                cfg = ScanFilterConfig()
+                default_cfg = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    os.pardir, "FinalCode", "config", "default.yaml"
+                )
+                default_cfg = os.path.normpath(default_cfg)
+                if os.path.isfile(default_cfg):
+                    cfg = ScanFilterConfig.load(default_cfg)
+        except ImportError:
+            pass  # pyyaml not available; use defaults
+
+        if cfg is None:
+            cfg = ScanFilterConfig()
 
         pipeline = ScanFilterPipeline(cfg)
         artifacts = pipeline.run(csv_path, mrd_file, output_dir)
