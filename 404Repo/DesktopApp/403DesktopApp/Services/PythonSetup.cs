@@ -87,6 +87,10 @@ namespace _403DesktopApp
             // Step 4: Initialize the Python runtime
             PythonEngine.Initialize();
 
+            // Step 5: Ensure required Python packages are installed.
+            // The detected Python may not have numpy/pydicom/pyyaml.
+            EnsureDependencies(detected.Home);
+
             // Add all required directories to sys.path
             using (Py.GIL())
             {
@@ -130,6 +134,93 @@ namespace _403DesktopApp
             if (!_initialized) return;
             PythonEngine.Shutdown();
             _initialized = false;
+        }
+
+        /// <summary>
+        /// Ensure that required third-party Python packages are installed.
+        /// Runs "pip install" for any missing packages. This handles the case
+        /// where Python.NET loads a Python installation that doesn't have
+        /// numpy, pydicom, or pyyaml installed.
+        /// </summary>
+        private static void EnsureDependencies(string? pythonHome)
+        {
+            string[] requiredPackages = { "numpy", "pydicom", "pyyaml" };
+
+            // Find the Python executable
+            string? pythonExe = null;
+            if (!string.IsNullOrEmpty(pythonHome))
+            {
+                string candidate = Path.Combine(pythonHome, "python.exe");
+                if (File.Exists(candidate))
+                    pythonExe = candidate;
+            }
+            if (pythonExe == null)
+            {
+                // Fall back to PATH
+                pythonExe = "python";
+            }
+
+            // Check which packages are missing by trying to import them
+            var missing = new List<string>();
+            using (Py.GIL())
+            {
+                dynamic builtins = Py.Import("builtins");
+                foreach (string pkg in requiredPackages)
+                {
+                    // pyyaml installs as 'yaml'
+                    string importName = pkg == "pyyaml" ? "yaml" : pkg;
+                    try
+                    {
+                        builtins.__import__(importName);
+                    }
+                    catch (PythonException)
+                    {
+                        missing.Add(pkg);
+                    }
+                }
+            }
+
+            if (missing.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("[PythonSetup] All required packages are installed.");
+                return;
+            }
+
+            string pkgList = string.Join(" ", missing);
+            System.Diagnostics.Debug.WriteLine($"[PythonSetup] Installing missing packages: {pkgList}");
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = pythonExe,
+                    Arguments = $"-m pip install {pkgList}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                // Clear PYTHONHOME so pip uses the correct paths
+                psi.Environment.Remove("PYTHONHOME");
+
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    string stdout = process.StandardOutput.ReadToEnd();
+                    string stderr = process.StandardError.ReadToEnd();
+                    process.WaitForExit();
+
+                    System.Diagnostics.Debug.WriteLine($"[PythonSetup] pip install exit code: {process.ExitCode}");
+                    if (!string.IsNullOrWhiteSpace(stdout))
+                        System.Diagnostics.Debug.WriteLine($"[PythonSetup] pip stdout: {stdout}");
+                    if (!string.IsNullOrWhiteSpace(stderr))
+                        System.Diagnostics.Debug.WriteLine($"[PythonSetup] pip stderr: {stderr}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PythonSetup] WARNING: Failed to install packages: {ex.Message}");
+            }
         }
 
         /// <summary>
