@@ -121,6 +121,11 @@ namespace _403DesktopApp
                 }
             }
 
+            // Release the GIL so background threads can acquire it via Py.GIL().
+            // Without this, Task.Run calls that use Py.GIL() will deadlock because
+            // the main thread holds the GIL after PythonEngine.Initialize().
+            PythonEngine.BeginAllowThreads();
+
             _initialized = true;
             System.Diagnostics.Debug.WriteLine($"[PythonSetup] Runtime initialized. Python {PythonEngine.Version}");
             System.Diagnostics.Debug.WriteLine($"[PythonSetup] Scripts path: {PythonScriptsPath}");
