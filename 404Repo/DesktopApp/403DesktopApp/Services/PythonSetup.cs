@@ -108,6 +108,25 @@ namespace _403DesktopApp
             using (Py.GIL())
             {
                 dynamic sys = Py.Import("sys");
+
+                // Ensure the Python installation's site-packages is on sys.path.
+                // Embedded Python.NET may not run the site module, so installed
+                // packages (pyyaml, numpy, pydicom) are not discoverable by default.
+                string pythonPrefix = (string)sys.prefix;
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    string sitePackages = Path.Combine(pythonPrefix, "Lib", "site-packages");
+                    if (Directory.Exists(sitePackages))
+                        sys.path.append(sitePackages);
+                }
+                else
+                {
+                    string pyVer = $"{(int)sys.version_info.major}.{(int)sys.version_info.minor}";
+                    string sitePackages = Path.Combine(pythonPrefix, "lib", $"python{pyVer}", "site-packages");
+                    if (Directory.Exists(sitePackages))
+                        sys.path.append(sitePackages);
+                }
+
                 sys.path.append(PythonScriptsPath);
 
                 if (Directory.Exists(ScanFilterCodePath))
@@ -119,6 +138,11 @@ namespace _403DesktopApp
                 {
                     sys.path.append(FinalCodePath);
                 }
+
+                // Log sys.path for diagnostics
+                System.Diagnostics.Debug.WriteLine("[PythonSetup] sys.path:");
+                foreach (var p in sys.path)
+                    System.Diagnostics.Debug.WriteLine($"  - {p}");
             }
 
             // Release the GIL so background threads can acquire it via Py.GIL().
