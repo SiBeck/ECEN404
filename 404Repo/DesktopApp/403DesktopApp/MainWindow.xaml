@@ -344,7 +344,7 @@
                                                VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis"
                                                ToolTip="{Binding SelectedCsvPath}"
-                                               Foreground="{Binding SelectedCsvPath, Converter={x:Null}, FallbackValue=#888888}"/>
+                                               Foreground="#333333"/>
                                 </Border>
 
                                 <Button Grid.Column="2"
@@ -381,7 +381,7 @@
                                                VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis"
                                                ToolTip="{Binding SelectedMrdPath}"
-                                               Foreground="{Binding SelectedMrdPath, Converter={x:Null}, FallbackValue=#888888}"/>
+                                               Foreground="#333333"/>
                                 </Border>
 
                                 <Button Grid.Column="2"
