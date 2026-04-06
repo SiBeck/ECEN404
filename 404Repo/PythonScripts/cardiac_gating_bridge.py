@@ -23,13 +23,12 @@ def _ensure_cardiac_gating_on_path():
     if final_code_dir not in sys.path:
         sys.path.insert(0, final_code_dir)
 
-    # Ensure the Python installation's site-packages are on sys.path.
-    # When Python is embedded via Python.NET, the site module may not have
-    # run, so packages like pyyaml/numpy/pydicom are not discoverable.
-    import site
-    site.main()
+    # When Python is embedded via Python.NET, installed packages (pyyaml,
+    # numpy, pydicom) may not be on sys.path. Explicitly add site-packages
+    # from the Python installation prefix and any user site-packages.
+    _add_site_packages()
 
-    # Also add venv site-packages if present, so numpy/pydicom/pyyaml are available.
+    # Also add venv site-packages if present inside FinalCode.
     venv_dir = os.path.join(final_code_dir, ".venv")
     if os.path.isdir(venv_dir):
         if sys.platform == "win32":
@@ -37,6 +36,33 @@ def _ensure_cardiac_gating_on_path():
         else:
             ver = f"{sys.version_info.major}.{sys.version_info.minor}"
             sp = os.path.join(venv_dir, "lib", f"python{ver}", "site-packages")
+        if os.path.isdir(sp) and sp not in sys.path:
+            sys.path.insert(0, sp)
+
+
+def _add_site_packages():
+    """Explicitly add site-packages directories to sys.path for embedded Python."""
+    ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+    candidates = []
+
+    if sys.platform == "win32":
+        # Standard Python on Windows: <prefix>\Lib\site-packages
+        candidates.append(os.path.join(sys.prefix, "Lib", "site-packages"))
+        # Per-user installs on Windows
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            candidates.append(os.path.join(appdata, "Python", f"Python{sys.version_info.major}{sys.version_info.minor}", "site-packages"))
+    else:
+        candidates.append(os.path.join(sys.prefix, "lib", f"python{ver}", "site-packages"))
+
+    # Also check sys.base_prefix (differs from sys.prefix inside a venv)
+    if sys.base_prefix != sys.prefix:
+        if sys.platform == "win32":
+            candidates.append(os.path.join(sys.base_prefix, "Lib", "site-packages"))
+        else:
+            candidates.append(os.path.join(sys.base_prefix, "lib", f"python{ver}", "site-packages"))
+
+    for sp in candidates:
         if os.path.isdir(sp) and sp not in sys.path:
             sys.path.insert(0, sp)
 
