@@ -33,6 +33,11 @@ public static class PythonSetup
     public static string DummyCodePath { get; private set; } = string.Empty;
 
     /// <summary>
+    /// Path to the FinalCode directory containing the cardiac_gating package.
+    /// </summary>
+    public static string FinalCodePath { get; private set; } = string.Empty;
+
+    /// <summary>
     /// Initialize the Python.NET runtime and configure sys.path so that
     /// the PythonScripts modules can be imported.
     ///
@@ -58,6 +63,7 @@ public static class PythonSetup
 
         PythonScriptsPath = Path.Combine(repoRoot, "404Repo", "PythonScripts");
         DummyCodePath = Path.Combine(PythonScriptsPath, "Dummy python code");
+        FinalCodePath = Path.Combine(repoRoot, "404Repo", "FinalCode");
 
         if (!Directory.Exists(PythonScriptsPath))
         {
@@ -170,12 +176,20 @@ public static class PythonSetup
                 sys.path.append(scanFilterCodePath);
                 Console.WriteLine($"[PythonSetup] Scan Filter Code path: {scanFilterCodePath}");
             }
+
+            // Add FinalCode directory so the cardiac_gating package is importable.
+            if (Directory.Exists(FinalCodePath))
+            {
+                sys.path.append(FinalCodePath);
+                Console.WriteLine($"[PythonSetup] FinalCode path: {FinalCodePath}");
+            }
         }
 
         _initialized = true;
         Console.WriteLine($"[PythonSetup] Runtime initialized. Python {PythonEngine.Version}");
         Console.WriteLine($"[PythonSetup] Scripts path: {PythonScriptsPath}");
         Console.WriteLine($"[PythonSetup] Dummy code path: {DummyCodePath}");
+        Console.WriteLine($"[PythonSetup] FinalCode path: {FinalCodePath}");
     }
 
     /// <summary>

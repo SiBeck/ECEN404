@@ -31,6 +31,11 @@ namespace _403DesktopApp
         private List<string> _filteredDicomFiles = new();
         private bool _isFilteredSeriesMode;
 
+        // Cardiac gating fields
+        private readonly CardiacGatingService _cardiacGatingService = new();
+        private bool _isGatingRunning;
+        private string _gatingResultSummary = "";
+
         public string CurrentPage
         {
             get => _currentPage;
@@ -131,6 +136,19 @@ namespace _403DesktopApp
             set { _filterResultSummary = value; OnPropertyChanged(); }
         }
 
+        // Cardiac gating properties
+        public bool IsGatingRunning
+        {
+            get => _isGatingRunning;
+            set { _isGatingRunning = value; OnPropertyChanged(); }
+        }
+
+        public string GatingResultSummary
+        {
+            get => _gatingResultSummary;
+            set { _gatingResultSummary = value; OnPropertyChanged(); }
+        }
+
         public ICommand NavigateCommand { get; }
         public ICommand SubmitCommand { get; }
         public ICommand OpenImageCommand { get; }
@@ -143,6 +161,7 @@ namespace _403DesktopApp
         public ICommand FirstFrameCommand { get; }
         public ICommand LastFrameCommand { get; }
         public ICommand RunScanFilterCommand { get; }
+        public ICommand RunCardiacGatingCommand { get; }
 
         public MainViewModel()
         {
@@ -158,6 +177,7 @@ namespace _403DesktopApp
             FirstFrameCommand = new RelayCommand(FirstFrame, CanGoPreviousFrame);
             LastFrameCommand = new RelayCommand(LastFrame, CanGoNextFrame);
             RunScanFilterCommand = new RelayCommand(RunScanFilter, _ => !_isFilterRunning);
+            RunCardiacGatingCommand = new RelayCommand(RunCardiacGating, _ => !_isGatingRunning);
         }
 
         private void Navigate(object parameter)
@@ -479,6 +499,69 @@ namespace _403DesktopApp
             ZoomLevel = 1.0;
 
             LoadCurrentFrame();
+        }
+
+        private async void RunCardiacGating(object parameter)
+        {
+            // Step 1: Select cardiogram CSV
+            var csvDialog = new OpenFileDialog
+            {
+                Title = "Select Cardiogram CSV File",
+                Filter = "CSV Files|*.csv|All Files|*.*",
+                FilterIndex = 1
+            };
+
+            if (csvDialog.ShowDialog() != true) return;
+            string csvPath = csvDialog.FileName;
+
+            // Step 2: Select MRD file
+            var mrdDialog = new OpenFileDialog
+            {
+                Title = "Select MRD Scan File",
+                Filter = "MRD Files|*.mrd|All Files|*.*",
+                FilterIndex = 1
+            };
+
+            if (mrdDialog.ShowDialog() != true) return;
+            string mrdFile = mrdDialog.FileName;
+
+            // Step 3: Run the cardiac gating pipeline
+            IsGatingRunning = true;
+            GatingResultSummary = "";
+            StatusText = "Initializing Python runtime...";
+
+            string outputDir = Path.Combine(
+                Path.GetTempPath(),
+                "BioMetrix_Gated_" + Guid.NewGuid().ToString("N")[..8]);
+
+            try
+            {
+                _cardiacGatingService.EnsurePythonInitialized();
+                StatusText = "Running cardiac gating pipeline...";
+
+                var result = await _cardiacGatingService.RunGatingAsync(
+                    csvPath, mrdFile, outputDir);
+
+                if (result.Success)
+                {
+                    GatingResultSummary = $"Accepted: {result.AcceptedFrames}, Rejected: {result.RejectedFrames}, Stable cycles: {result.StableCycles}, Offset: {result.AlignmentOffsetMs:F2} ms";
+                    StatusText = $"Cardiac gating complete. {result.AcceptedFrames} frames accepted.";
+                    LoadFilteredDicomFolder(result.OutputDir);
+                }
+                else
+                {
+                    StatusText = $"Cardiac gating failed: {result.Error}";
+                    GatingResultSummary = "";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Cardiac gating error: {ex.Message}";
+            }
+            finally
+            {
+                IsGatingRunning = false;
+            }
         }
 
         private void UpdateImageInfo()
