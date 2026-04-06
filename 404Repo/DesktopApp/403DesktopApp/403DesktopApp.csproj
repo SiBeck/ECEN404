@@ -15,10 +15,11 @@
     <Folder Include="Views\" />
   </ItemGroup>
 
-  <!-- Remove the implicit global using for System.Windows.Forms to avoid
-       ambiguous references with WPF types (Application, MouseEventArgs, etc.) -->
+  <!-- Remove implicit global usings that conflict with WPF types
+       (Application, MouseEventArgs, KeyEventArgs, Point, etc.) -->
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
   </ItemGroup>
 
   <ItemGroup>
