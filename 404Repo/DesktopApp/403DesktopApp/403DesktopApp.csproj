@@ -28,6 +28,11 @@
     <PackageReference Include="fo-dicom.Codecs" Version="5.16.4" />
     <PackageReference Include="fo-dicom.Desktop" Version="4.0.8" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.9" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\CardiacGatingMRI\CardiacGatingMRI.csproj" />
   </ItemGroup>
 
 	<ItemGroup>

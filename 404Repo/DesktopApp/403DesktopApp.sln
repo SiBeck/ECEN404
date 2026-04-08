@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36518.9 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "403DesktopApp", "403DesktopApp\403DesktopApp.csproj", "{A7C84C9E-930D-47EC-BEBA-8CCE709BE28F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardiacGatingMRI", "..\CardiacGatingMRI\CardiacGatingMRI.csproj", "{B1D2E3F4-5678-9ABC-DEF0-123456789ABC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A7C84C9E-930D-47EC-BEBA-8CCE709BE28F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A7C84C9E-930D-47EC-BEBA-8CCE709BE28F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A7C84C9E-930D-47EC-BEBA-8CCE709BE28F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1D2E3F4-5678-9ABC-DEF0-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1D2E3F4-5678-9ABC-DEF0-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1D2E3F4-5678-9ABC-DEF0-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1D2E3F4-5678-9ABC-DEF0-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

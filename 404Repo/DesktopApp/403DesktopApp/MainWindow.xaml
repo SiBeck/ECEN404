@@ -120,7 +120,7 @@
                                     BorderThickness="0"
                                     Cursor="Hand"/>
 
-                            <Button Content="Clear" 
+                            <Button Content="Clear"
                                     Command="{Binding ClearImageCommand}"
                                     Padding="15,8"
                                     Margin="0,0,10,0"
@@ -128,7 +128,17 @@
                                     BorderThickness="0"
                                     Cursor="Hand"/>
 
-                            <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" 
+                            <Button Content="Save to Patient File"
+                                    Command="{Binding SaveImageCommand}"
+                                    Padding="15,8"
+                                    Margin="0,0,10,0"
+                                    Background="#6F42C1"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    ToolTip="Save the current image as DICOM or PNG to a patient file"/>
+
+                            <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
                                        Margin="10,0"/>
 
                             <Button Content="Zoom In" 
