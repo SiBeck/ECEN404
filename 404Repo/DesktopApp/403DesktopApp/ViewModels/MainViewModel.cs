@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
@@ -198,6 +199,7 @@ namespace _403DesktopApp
         public ICommand FirstFrameCommand { get; }
         public ICommand LastFrameCommand { get; }
         public ICommand RunScanFilterCommand { get; }
+        public ICommand SaveImageCommand { get; }
         public ICommand BrowseCsvCommand { get; }
         public ICommand BrowseMrdCommand { get; }
         public ICommand ClearGatingInputsCommand { get; }
@@ -217,6 +219,7 @@ namespace _403DesktopApp
             FirstFrameCommand = new RelayCommand(FirstFrame, CanGoPreviousFrame);
             LastFrameCommand = new RelayCommand(LastFrame, CanGoNextFrame);
             RunScanFilterCommand = new RelayCommand(RunScanFilter, _ => !_isFilterRunning);
+            SaveImageCommand = new RelayCommand(SaveImageToPatientFile, _ => CurrentImageSource != null);
             BrowseCsvCommand = new RelayCommand(BrowseCsv);
             BrowseMrdCommand = new RelayCommand(BrowseMrd);
             ClearGatingInputsCommand = new RelayCommand(ClearGatingInputs);
@@ -470,20 +473,24 @@ namespace _403DesktopApp
             if (csvDialog.ShowDialog() != true) return;
             string csvPath = csvDialog.FileName;
 
-            // Step 2: Select DICOM folder
-            using var folderDialog = new System.Windows.Forms.FolderBrowserDialog
+            // Step 2: Select MRD scan files (multi-select)
+            var mrdDialog = new OpenFileDialog
             {
-                Description = "Select DICOM Series Folder",
-                ShowNewFolderButton = false
+                Title = "Select MRD Scan File(s)",
+                Filter = "MRD Files|*.mrd|All Files|*.*",
+                FilterIndex = 1,
+                Multiselect = true
             };
 
-            if (folderDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
-            string dicomFolder = folderDialog.SelectedPath;
+            if (mrdDialog.ShowDialog() != true) return;
+            string[] mrdPaths = mrdDialog.FileNames;
 
-            // Step 3: Run the filter
+            if (mrdPaths.Length == 0) return;
+
+            // Step 3: Run the C# gating pipeline
             IsFilterRunning = true;
             FilterResultSummary = "";
-            StatusText = "Initializing Python runtime...";
+            StatusText = "Running scan filter (cardiac gating)...";
 
             string outputDir = Path.Combine(
                 Path.GetTempPath(),
@@ -491,16 +498,17 @@ namespace _403DesktopApp
 
             try
             {
-                _scanFilterService.EnsurePythonInitialized();
-                StatusText = "Running scan filter pipeline...";
-
                 var result = await _scanFilterService.RunFilterAsync(
-                    csvPath, dicomFolder, outputDir);
+                    csvPath, mrdPaths, outputDir);
 
                 if (result.Success)
                 {
-                    FilterResultSummary = $"Accepted: {result.AcceptedFrames}, Rejected: {result.RejectedFrames}, Stable cycles: {result.StableCycles}";
-                    StatusText = $"Scan filter complete. {result.AcceptedFrames} frames accepted.";
+                    FilterResultSummary =
+                        $"Total lines: {result.TotalLines}, " +
+                        $"Clean: {result.CleanBaseLines}, " +
+                        $"Replaced: {result.ReplacedLines}, " +
+                        $"Unfixable: {result.UnfixableLines}";
+                    StatusText = $"Scan filter complete. {result.ReplacedLines} lines replaced via gating.";
                     LoadFilteredDicomFolder(result.OutputDir);
                 }
                 else
@@ -542,6 +550,112 @@ namespace _403DesktopApp
             ZoomLevel = 1.0;
 
             LoadCurrentFrame();
+        }
+
+        private void SaveImageToPatientFile(object parameter)
+        {
+            if (CurrentImageSource == null)
+            {
+                StatusText = "No image loaded to save.";
+                return;
+            }
+
+            var saveDialog = new SaveFileDialog
+            {
+                Title = "Save Image to Patient File",
+                Filter = "DICOM File|*.dcm|PNG Image|*.png|All Files|*.*",
+                FilterIndex = 1,
+                FileName = string.IsNullOrEmpty(_currentImagePath)
+                    ? "patient_image"
+                    : Path.GetFileNameWithoutExtension(_currentImagePath)
+            };
+
+            if (saveDialog.ShowDialog() != true) return;
+
+            try
+            {
+                string savePath = saveDialog.FileName;
+                string ext = Path.GetExtension(savePath).ToLowerInvariant();
+
+                if (ext == ".dcm" || ext == ".dicom")
+                {
+                    // If we have a loaded DICOM file, copy it to the patient file location
+                    if (!string.IsNullOrEmpty(_currentImagePath) && File.Exists(_currentImagePath)
+                        && (Path.GetExtension(_currentImagePath).Equals(".dcm", StringComparison.OrdinalIgnoreCase)
+                            || Path.GetExtension(_currentImagePath).Equals(".dicom", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(savePath) ?? ".");
+                        File.Copy(_currentImagePath, savePath, overwrite: true);
+                    }
+                    else
+                    {
+                        // Create a new DICOM Secondary Capture from the displayed image
+                        SaveBitmapSourceAsDicom(CurrentImageSource, savePath);
+                    }
+                }
+                else
+                {
+                    // Save as PNG (or other bitmap format)
+                    SaveBitmapSourceAsPng(CurrentImageSource, savePath);
+                }
+
+                StatusText = $"Image saved to: {savePath}";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Error saving image: {ex.Message}";
+            }
+        }
+
+        private static void SaveBitmapSourceAsPng(BitmapSource source, string outputPath)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? ".");
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(source));
+            using var stream = File.Create(outputPath);
+            encoder.Save(stream);
+        }
+
+        private static void SaveBitmapSourceAsDicom(BitmapSource source, string outputPath)
+        {
+            int width = source.PixelWidth;
+            int height = source.PixelHeight;
+
+            // Convert to grayscale 16-bit pixel data
+            var grayscale = new FormatConvertedBitmap(source, System.Windows.Media.PixelFormats.Gray16, null, 0);
+            int stride = width * 2; // 16 bits per pixel
+            byte[] pixelBytes = new byte[height * stride];
+            grayscale.CopyPixels(pixelBytes, stride, 0);
+
+            var dataset = new DicomDataset();
+            dataset.AddOrUpdate(DicomTag.MediaStorageSOPClassUID, "1.2.840.10008.5.1.4.1.1.7");
+            dataset.AddOrUpdate(DicomTag.MediaStorageSOPInstanceUID, DicomUID.Generate().UID);
+            dataset.AddOrUpdate(DicomTag.TransferSyntaxUID, "1.2.840.10008.1.2.1");
+            dataset.AddOrUpdate(DicomTag.PatientName, "PATIENT");
+            dataset.AddOrUpdate(DicomTag.PatientID, "PAT_001");
+            dataset.AddOrUpdate(DicomTag.StudyDescription, "Saved from Image Viewer");
+            dataset.AddOrUpdate(DicomTag.SeriesDescription, "Patient Image");
+            dataset.AddOrUpdate(DicomTag.Modality, "OT");
+            dataset.AddOrUpdate(DicomTag.StudyInstanceUID, DicomUID.Generate().UID);
+            dataset.AddOrUpdate(DicomTag.SeriesInstanceUID, DicomUID.Generate().UID);
+            dataset.AddOrUpdate(DicomTag.SOPClassUID, "1.2.840.10008.5.1.4.1.1.7");
+            dataset.AddOrUpdate(DicomTag.SOPInstanceUID, DicomUID.Generate().UID);
+            dataset.AddOrUpdate(DicomTag.StudyDate, DateTime.UtcNow.ToString("yyyyMMdd"));
+            dataset.AddOrUpdate(DicomTag.StudyTime, DateTime.UtcNow.ToString("HHmmss"));
+            dataset.AddOrUpdate(DicomTag.SamplesPerPixel, (ushort)1);
+            dataset.AddOrUpdate(DicomTag.PhotometricInterpretation, "MONOCHROME2");
+            dataset.AddOrUpdate(DicomTag.Rows, (ushort)height);
+            dataset.AddOrUpdate(DicomTag.Columns, (ushort)width);
+            dataset.AddOrUpdate(DicomTag.BitsAllocated, (ushort)16);
+            dataset.AddOrUpdate(DicomTag.BitsStored, (ushort)16);
+            dataset.AddOrUpdate(DicomTag.HighBit, (ushort)15);
+            dataset.AddOrUpdate(DicomTag.PixelRepresentation, (ushort)0);
+            dataset.AddOrUpdate(new DicomOtherWord(DicomTag.PixelData,
+                new FellowOakDicom.IO.Buffer.MemoryByteBuffer(pixelBytes)));
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? ".");
+            var file = new DicomFile(dataset);
+            file.Save(outputPath);
         }
 
         private void BrowseCsv(object parameter)
