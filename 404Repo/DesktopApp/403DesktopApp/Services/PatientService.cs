@@ -173,6 +173,95 @@ namespace _403DesktopApp.Services
                 .ToList();
         }
 
+        /// <summary>
+        /// Saves an image file into the patient's managed image directory,
+        /// records the metadata in the patient profile, and re-encrypts the record.
+        /// Returns the PatientImage metadata that was created.
+        /// </summary>
+        public PatientImage SaveImageForPatient(
+            string patientId,
+            string sourceFilePath,
+            string tag,
+            string description,
+            string sourceType)
+        {
+            var profile = LoadPatient(patientId)
+                ?? throw new InvalidOperationException($"Patient '{patientId}' not found.");
+
+            string imageDir = GetPatientImageDir(patientId);
+            Directory.CreateDirectory(imageDir);
+
+            string ext = Path.GetExtension(sourceFilePath);
+            var image = new PatientImage
+            {
+                FileName = Path.GetFileName(sourceFilePath),
+                Tag = tag?.Trim() ?? "",
+                Description = description?.Trim() ?? "",
+                SourceType = sourceType ?? "",
+                SavedDate = DateTime.UtcNow,
+                SavedByProviderId =
+                    AuthenticationService.CurrentProvider?.ProviderId ?? "UNKNOWN"
+            };
+
+            string destPath = Path.Combine(imageDir, $"{image.ImageId}{ext}");
+            File.Copy(sourceFilePath, destPath, overwrite: true);
+
+            // Store relative filename so records are portable
+            image.FileName = $"{image.ImageId}{ext}";
+
+            profile.AssociatedImages.Add(image);
+            profile.LastModifiedDate = DateTime.UtcNow;
+            SavePatient(profile);
+
+            return image;
+        }
+
+        /// <summary>
+        /// Removes an image from a patient profile and deletes the file.
+        /// </summary>
+        public void RemoveImageFromPatient(string patientId, string imageId)
+        {
+            var profile = LoadPatient(patientId);
+            if (profile == null) return;
+
+            var image = profile.AssociatedImages.FirstOrDefault(i => i.ImageId == imageId);
+            if (image == null) return;
+
+            string filePath = GetImageFullPath(patientId, image.FileName);
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+
+            profile.AssociatedImages.Remove(image);
+            profile.LastModifiedDate = DateTime.UtcNow;
+            SavePatient(profile);
+        }
+
+        /// <summary>
+        /// Updates the tag and description of an existing patient image.
+        /// </summary>
+        public void UpdateImageMetadata(string patientId, string imageId, string newTag, string newDescription)
+        {
+            var profile = LoadPatient(patientId);
+            if (profile == null) return;
+
+            var image = profile.AssociatedImages.FirstOrDefault(i => i.ImageId == imageId);
+            if (image == null) return;
+
+            image.Tag = newTag?.Trim() ?? "";
+            image.Description = newDescription?.Trim() ?? "";
+            profile.LastModifiedDate = DateTime.UtcNow;
+            SavePatient(profile);
+        }
+
+        /// <summary>
+        /// Returns the full path to a patient image file on disk.
+        /// </summary>
+        public string GetImageFullPath(string patientId, string imageFileName)
+            => Path.Combine(GetPatientImageDir(patientId), imageFileName);
+
+        private string GetPatientImageDir(string patientId)
+            => Path.Combine(_storageDir, "images", patientId);
+
         private string GetPatientFilePath(string patientId)
             => Path.Combine(_storageDir, $"{patientId}.enc");
 
