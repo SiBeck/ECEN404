@@ -1,0 +1,223 @@
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using _403DesktopApp.Models;
+
+namespace _403DesktopApp.Services
+{
+    /// <summary>
+    /// Manages patient profiles with AES-256-CBC encrypted local storage.
+    /// Patient data is serialized to JSON, encrypted, and stored in the
+    /// local application data directory (%APPDATA%/BioMetrix/patients/).
+    /// Each patient record is a separate encrypted file keyed by PatientId.
+    /// </summary>
+    public class PatientService
+    {
+        private const int KeySize = 32;       // AES-256
+        private const int IvSize = 16;        // AES block size
+        private const int SaltSize = 16;      // PBKDF2 salt
+        private const int Iterations = 100_000; // OWASP-compliant PBKDF2 iterations
+
+        private readonly string _storageDir;
+        private readonly byte[] _encryptionKey;
+
+        /// <summary>
+        /// Initializes the patient service. Derives an AES-256 encryption key
+        /// from the given passphrase using PBKDF2-SHA256.
+        /// </summary>
+        /// <param name="passphrase">
+        /// Passphrase used to derive the encryption key. In production this
+        /// should come from a secure key store or hardware security module.
+        /// </param>
+        public PatientService(string passphrase = "BioMetrix-PHI-Encryption-Key")
+        {
+            _storageDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "BioMetrix", "patients");
+            Directory.CreateDirectory(_storageDir);
+
+            // Derive a stable key from the passphrase using a fixed salt.
+            // The fixed salt ensures the same key is derived across sessions.
+            byte[] fixedSalt = Encoding.UTF8.GetBytes("BioMetrix-Salt-v1");
+            using var kdf = new Rfc2898DeriveBytes(
+                passphrase, fixedSalt, Iterations, HashAlgorithmName.SHA256);
+            _encryptionKey = kdf.GetBytes(KeySize);
+        }
+
+        /// <summary>
+        /// Validates a patient profile before saving.
+        /// Returns null if valid, or an error message describing the problem.
+        /// </summary>
+        public static string? ValidateProfile(PatientProfile profile)
+        {
+            if (string.IsNullOrWhiteSpace(profile.FirstName))
+                return "First name is required.";
+            if (string.IsNullOrWhiteSpace(profile.LastName))
+                return "Last name is required.";
+            if (profile.DateOfBirth > DateTime.Today)
+                return "Date of birth cannot be in the future.";
+            if (profile.DateOfBirth < new DateTime(1900, 1, 1))
+                return "Date of birth is not valid.";
+            if (!string.IsNullOrWhiteSpace(profile.Email) && !profile.Email.Contains('@'))
+                return "Email address format is invalid.";
+            if (!string.IsNullOrWhiteSpace(profile.PhoneNumber) &&
+                profile.PhoneNumber.Any(c => !char.IsDigit(c) && c != '-' && c != '(' && c != ')' && c != ' ' && c != '+'))
+                return "Phone number contains invalid characters.";
+            return null;
+        }
+
+        /// <summary>
+        /// Saves a patient profile to encrypted local storage.
+        /// Creates a new file or overwrites an existing one.
+        /// </summary>
+        public void SavePatient(PatientProfile profile)
+        {
+            string error = ValidateProfile(profile);
+            if (error != null)
+                throw new ArgumentException(error);
+
+            profile.LastModifiedDate = DateTime.UtcNow;
+
+            string json = JsonSerializer.Serialize(profile, new JsonSerializerOptions
+            {
+                WriteIndented = false
+            });
+
+            byte[] plaintext = Encoding.UTF8.GetBytes(json);
+            byte[] ciphertext = Encrypt(plaintext);
+
+            string filePath = GetPatientFilePath(profile.PatientId);
+            File.WriteAllBytes(filePath, ciphertext);
+        }
+
+        /// <summary>
+        /// Loads a patient profile by ID from encrypted storage.
+        /// Returns null if the patient is not found.
+        /// </summary>
+        public PatientProfile? LoadPatient(string patientId)
+        {
+            string filePath = GetPatientFilePath(patientId);
+            if (!File.Exists(filePath))
+                return null;
+
+            byte[] ciphertext = File.ReadAllBytes(filePath);
+            byte[] plaintext = Decrypt(ciphertext);
+            string json = Encoding.UTF8.GetString(plaintext);
+
+            return JsonSerializer.Deserialize<PatientProfile>(json);
+        }
+
+        /// <summary>
+        /// Loads all patient profiles from encrypted storage.
+        /// Skips any files that fail to decrypt (corrupted/tampered).
+        /// </summary>
+        public List<PatientProfile> LoadAllPatients()
+        {
+            var patients = new List<PatientProfile>();
+
+            if (!Directory.Exists(_storageDir))
+                return patients;
+
+            foreach (var file in Directory.GetFiles(_storageDir, "*.enc"))
+            {
+                try
+                {
+                    byte[] ciphertext = File.ReadAllBytes(file);
+                    byte[] plaintext = Decrypt(ciphertext);
+                    string json = Encoding.UTF8.GetString(plaintext);
+                    var profile = JsonSerializer.Deserialize<PatientProfile>(json);
+                    if (profile != null)
+                        patients.Add(profile);
+                }
+                catch (CryptographicException)
+                {
+                    // Skip corrupted or tampered files
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[PatientService] Skipping corrupted file: {Path.GetFileName(file)}");
+                }
+            }
+
+            return patients.OrderBy(p => p.LastName).ThenBy(p => p.FirstName).ToList();
+        }
+
+        /// <summary>
+        /// Deletes a patient profile from encrypted storage.
+        /// Returns true if the file was found and deleted.
+        /// </summary>
+        public bool DeletePatient(string patientId)
+        {
+            string filePath = GetPatientFilePath(patientId);
+            if (!File.Exists(filePath))
+                return false;
+
+            File.Delete(filePath);
+            return true;
+        }
+
+        /// <summary>
+        /// Searches patients by name or medical record number (case-insensitive).
+        /// </summary>
+        public List<PatientProfile> SearchPatients(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return LoadAllPatients();
+
+            string q = query.Trim().ToLowerInvariant();
+            return LoadAllPatients()
+                .Where(p =>
+                    p.FirstName.ToLowerInvariant().Contains(q) ||
+                    p.LastName.ToLowerInvariant().Contains(q) ||
+                    p.MedicalRecordNumber.ToLowerInvariant().Contains(q) ||
+                    p.FullName.ToLowerInvariant().Contains(q))
+                .ToList();
+        }
+
+        private string GetPatientFilePath(string patientId)
+            => Path.Combine(_storageDir, $"{patientId}.enc");
+
+        // ── AES-256-CBC Encryption ──────────────────────────────────────────────
+        // Format: [16-byte IV] [ciphertext with PKCS7 padding]
+
+        private byte[] Encrypt(byte[] plaintext)
+        {
+            using var aes = Aes.Create();
+            aes.KeySize = 256;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+            aes.Key = _encryptionKey;
+            aes.GenerateIV(); // Random IV per encryption
+
+            using var encryptor = aes.CreateEncryptor();
+            byte[] ciphertext = encryptor.TransformFinalBlock(plaintext, 0, plaintext.Length);
+
+            // Prepend IV to ciphertext
+            byte[] result = new byte[IvSize + ciphertext.Length];
+            Array.Copy(aes.IV, 0, result, 0, IvSize);
+            Array.Copy(ciphertext, 0, result, IvSize, ciphertext.Length);
+            return result;
+        }
+
+        private byte[] Decrypt(byte[] data)
+        {
+            if (data.Length < IvSize + 1)
+                throw new CryptographicException("Encrypted data is too short.");
+
+            byte[] iv = new byte[IvSize];
+            Array.Copy(data, 0, iv, 0, IvSize);
+
+            byte[] ciphertext = new byte[data.Length - IvSize];
+            Array.Copy(data, IvSize, ciphertext, 0, ciphertext.Length);
+
+            using var aes = Aes.Create();
+            aes.KeySize = 256;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+            aes.Key = _encryptionKey;
+            aes.IV = iv;
+
+            using var decryptor = aes.CreateDecryptor();
+            return decryptor.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
+        }
+    }
+}

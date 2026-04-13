@@ -511,6 +511,322 @@
                 </Grid>
             </TabItem>
 
+            <!-- Patients Tab -->
+            <TabItem Header="Patients">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Panel: Patient List -->
+                    <Border Grid.Column="0"
+                            Background="{StaticResource SecondaryColor}"
+                            BorderBrush="#CCCCCC"
+                            BorderThickness="0,0,1,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Search Bar -->
+                            <Border Grid.Row="0" Padding="10"
+                                    BorderBrush="#CCCCCC" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding PatientSearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                             Padding="8,6"
+                                             Margin="0,0,5,0"
+                                             ToolTip="Search by name or MRN"/>
+
+                                    <Button Grid.Column="1"
+                                            Content="Search"
+                                            Command="{Binding SearchPatientsCommand}"
+                                            Padding="12,6"
+                                            Background="#007ACC"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            Cursor="Hand"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Patient List -->
+                            <ListBox Grid.Row="1"
+                                     ItemsSource="{Binding Patients}"
+                                     SelectedItem="{Binding SelectedPatient}"
+                                     Margin="5"
+                                     BorderThickness="0"
+                                     Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="5,4">
+                                            <TextBlock Text="{Binding FullName}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="13"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="MRN: "
+                                                           Foreground="#777777"
+                                                           FontSize="11"/>
+                                                <TextBlock Text="{Binding MedicalRecordNumber}"
+                                                           Foreground="#777777"
+                                                           FontSize="11"/>
+                                                <TextBlock Text="  |  DOB: "
+                                                           Foreground="#777777"
+                                                           FontSize="11"/>
+                                                <TextBlock Text="{Binding DateOfBirth, StringFormat='{}{0:MM/dd/yyyy}'}"
+                                                           Foreground="#777777"
+                                                           FontSize="11"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- New Patient Button -->
+                            <Border Grid.Row="2" Padding="10"
+                                    BorderBrush="#CCCCCC" BorderThickness="0,1,0,0">
+                                <Button Content="+ New Patient"
+                                        Command="{Binding NewPatientCommand}"
+                                        Padding="12,8"
+                                        Background="#28A745"
+                                        Foreground="White"
+                                        FontWeight="SemiBold"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        HorizontalAlignment="Stretch"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right Panel: Patient Detail Form -->
+                    <Border Grid.Column="1" Background="White">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ScrollViewer Grid.Row="0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          Padding="20,15">
+                                <StackPanel>
+                                    <TextBlock Text="Patient Profile"
+                                               FontSize="20"
+                                               FontWeight="Bold"
+                                               Margin="0,0,0,15"/>
+
+                                    <!-- Personal Information -->
+                                    <TextBlock Text="Personal Information"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#007ACC"
+                                               Margin="0,0,0,8"/>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="15"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="First Name *" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding PatFirstName, UpdateSourceTrigger=PropertyChanged}"
+                                                     Padding="8,6"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Last Name *" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding PatLastName, UpdateSourceTrigger=PropertyChanged}"
+                                                     Padding="8,6"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="15"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="15"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Date of Birth *" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <DatePicker SelectedDate="{Binding PatDateOfBirth}"
+                                                        Padding="4,4"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Gender" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <ComboBox SelectedValue="{Binding PatGender}"
+                                                      Padding="8,6"
+                                                      IsEditable="True">
+                                                <ComboBoxItem Content="Male"/>
+                                                <ComboBoxItem Content="Female"/>
+                                                <ComboBoxItem Content="Other"/>
+                                            </ComboBox>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="Medical Record # (MRN)" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding PatMrn, UpdateSourceTrigger=PropertyChanged}"
+                                                     Padding="8,6"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Separator -->
+                                    <Separator Margin="0,10"/>
+
+                                    <!-- Contact Information -->
+                                    <TextBlock Text="Contact Information"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#007ACC"
+                                               Margin="0,5,0,8"/>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="15"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Phone Number" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding PatPhone, UpdateSourceTrigger=PropertyChanged}"
+                                                     Padding="8,6"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Email" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding PatEmail, UpdateSourceTrigger=PropertyChanged}"
+                                                     Padding="8,6"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="Address" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding PatAddress, UpdateSourceTrigger=PropertyChanged}"
+                                                 Padding="8,6"/>
+                                    </StackPanel>
+
+                                    <!-- Separator -->
+                                    <Separator Margin="0,10"/>
+
+                                    <!-- Emergency Contact -->
+                                    <TextBlock Text="Emergency Contact"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#007ACC"
+                                               Margin="0,5,0,8"/>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="15"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Contact Name" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding PatEmergencyName, UpdateSourceTrigger=PropertyChanged}"
+                                                     Padding="8,6"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Contact Phone" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding PatEmergencyPhone, UpdateSourceTrigger=PropertyChanged}"
+                                                     Padding="8,6"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Separator -->
+                                    <Separator Margin="0,10"/>
+
+                                    <!-- Medical Notes -->
+                                    <TextBlock Text="Medical Notes"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#007ACC"
+                                               Margin="0,5,0,8"/>
+
+                                    <TextBox Text="{Binding PatNotes, UpdateSourceTrigger=PropertyChanged}"
+                                             Padding="8,6"
+                                             AcceptsReturn="True"
+                                             TextWrapping="Wrap"
+                                             MinHeight="80"
+                                             MaxHeight="160"
+                                             VerticalScrollBarVisibility="Auto"/>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- Action Bar -->
+                            <Border Grid.Row="1"
+                                    Background="{StaticResource SecondaryColor}"
+                                    Padding="15,10"
+                                    BorderBrush="#CCCCCC"
+                                    BorderThickness="0,1,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Button Grid.Column="0"
+                                            Content="Save Patient"
+                                            Command="{Binding SavePatientCommand}"
+                                            Padding="20,8"
+                                            Margin="0,0,8,0"
+                                            Background="#28A745"
+                                            Foreground="White"
+                                            FontWeight="SemiBold"
+                                            BorderThickness="0"
+                                            Cursor="Hand"/>
+
+                                    <Button Grid.Column="1"
+                                            Content="Delete"
+                                            Command="{Binding DeletePatientCommand}"
+                                            Padding="15,8"
+                                            Margin="0,0,8,0"
+                                            Background="#DC3545"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            Cursor="Hand"/>
+
+                                    <Button Grid.Column="2"
+                                            Content="Clear Form"
+                                            Command="{Binding ClearPatientFormCommand}"
+                                            Padding="15,8"
+                                            Margin="0,0,15,0"
+                                            Background="#E0E0E0"
+                                            BorderThickness="0"
+                                            Cursor="Hand"/>
+
+                                    <TextBlock Grid.Column="4"
+                                               Text="{Binding PatientStatusMessage}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right"
+                                               FontStyle="Italic"
+                                               Foreground="#555555"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
         <!-- Status Bar -->
