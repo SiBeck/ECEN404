@@ -65,6 +65,7 @@ namespace _403DesktopApp
 
             if (_authService.AuthenticateProvider(ProviderId, Password))
             {
+                AuthenticationService.CurrentProvider = _authService.GetProvider(ProviderId);
                 _window.DialogResult = true;
                 _window.Close();
             }

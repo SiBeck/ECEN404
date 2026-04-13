@@ -9,6 +9,11 @@ namespace _403DesktopApp.Services
 {
     public class AuthenticationService
     {
+        /// <summary>
+        /// The currently authenticated provider. Set after successful login.
+        /// </summary>
+        public static MedicalProvider? CurrentProvider { get; set; }
+
         private readonly List<MedicalProvider> _providers;
         private readonly PasswordHasher _passwordHasher;
 

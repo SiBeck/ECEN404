@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -7,6 +8,8 @@ using Microsoft.Win32;
 using System.IO;
 using FellowOakDicom;
 using FellowOakDicom.Imaging;
+using _403DesktopApp.Models;
+using _403DesktopApp.Services;
 
 namespace _403DesktopApp
 {
@@ -38,6 +41,26 @@ namespace _403DesktopApp
         private string _gatingResultSummary = "";
         private string _selectedCsvPath = "";
         private string _selectedMrdPath = "";
+
+        // Patient management fields
+        private readonly PatientService _patientService = new();
+        private ObservableCollection<PatientProfile> _patients = new();
+        private PatientProfile? _selectedPatient;
+        private string _patientSearchQuery = "";
+        private string _patientStatusMessage = "";
+        private bool _isEditingPatient;
+        // Patient form fields
+        private string _patFirstName = "";
+        private string _patLastName = "";
+        private DateTime _patDateOfBirth = DateTime.Today;
+        private string _patGender = "";
+        private string _patMrn = "";
+        private string _patPhone = "";
+        private string _patEmail = "";
+        private string _patAddress = "";
+        private string _patEmergencyName = "";
+        private string _patEmergencyPhone = "";
+        private string _patNotes = "";
 
         public string CurrentPage
         {
@@ -187,6 +210,111 @@ namespace _403DesktopApp
             && !string.IsNullOrEmpty(_selectedCsvPath)
             && !string.IsNullOrEmpty(_selectedMrdPath);
 
+        // Patient management properties
+        public ObservableCollection<PatientProfile> Patients
+        {
+            get => _patients;
+            set { _patients = value; OnPropertyChanged(); }
+        }
+
+        public PatientProfile? SelectedPatient
+        {
+            get => _selectedPatient;
+            set
+            {
+                _selectedPatient = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelectedPatient));
+                if (value != null) LoadPatientIntoForm(value);
+            }
+        }
+
+        public bool HasSelectedPatient => _selectedPatient != null;
+
+        public string PatientSearchQuery
+        {
+            get => _patientSearchQuery;
+            set { _patientSearchQuery = value; OnPropertyChanged(); }
+        }
+
+        public string PatientStatusMessage
+        {
+            get => _patientStatusMessage;
+            set { _patientStatusMessage = value; OnPropertyChanged(); }
+        }
+
+        public bool IsEditingPatient
+        {
+            get => _isEditingPatient;
+            set { _isEditingPatient = value; OnPropertyChanged(); }
+        }
+
+        public string PatFirstName
+        {
+            get => _patFirstName;
+            set { _patFirstName = value; OnPropertyChanged(); }
+        }
+
+        public string PatLastName
+        {
+            get => _patLastName;
+            set { _patLastName = value; OnPropertyChanged(); }
+        }
+
+        public DateTime PatDateOfBirth
+        {
+            get => _patDateOfBirth;
+            set { _patDateOfBirth = value; OnPropertyChanged(); }
+        }
+
+        public string PatGender
+        {
+            get => _patGender;
+            set { _patGender = value; OnPropertyChanged(); }
+        }
+
+        public string PatMrn
+        {
+            get => _patMrn;
+            set { _patMrn = value; OnPropertyChanged(); }
+        }
+
+        public string PatPhone
+        {
+            get => _patPhone;
+            set { _patPhone = value; OnPropertyChanged(); }
+        }
+
+        public string PatEmail
+        {
+            get => _patEmail;
+            set { _patEmail = value; OnPropertyChanged(); }
+        }
+
+        public string PatAddress
+        {
+            get => _patAddress;
+            set { _patAddress = value; OnPropertyChanged(); }
+        }
+
+        public string PatEmergencyName
+        {
+            get => _patEmergencyName;
+            set { _patEmergencyName = value; OnPropertyChanged(); }
+        }
+
+        public string PatEmergencyPhone
+        {
+            get => _patEmergencyPhone;
+            set { _patEmergencyPhone = value; OnPropertyChanged(); }
+        }
+
+        public string PatNotes
+        {
+            get => _patNotes;
+            set { _patNotes = value; OnPropertyChanged(); }
+        }
+
         public ICommand NavigateCommand { get; }
         public ICommand SubmitCommand { get; }
         public ICommand OpenImageCommand { get; }
@@ -204,6 +332,11 @@ namespace _403DesktopApp
         public ICommand BrowseMrdCommand { get; }
         public ICommand ClearGatingInputsCommand { get; }
         public ICommand RunCardiacGatingCommand { get; }
+        public ICommand NewPatientCommand { get; }
+        public ICommand SavePatientCommand { get; }
+        public ICommand DeletePatientCommand { get; }
+        public ICommand SearchPatientsCommand { get; }
+        public ICommand ClearPatientFormCommand { get; }
 
         public MainViewModel()
         {
@@ -224,6 +357,13 @@ namespace _403DesktopApp
             BrowseMrdCommand = new RelayCommand(BrowseMrd);
             ClearGatingInputsCommand = new RelayCommand(ClearGatingInputs);
             RunCardiacGatingCommand = new RelayCommand(RunCardiacGating, _ => CanRunGating);
+            NewPatientCommand = new RelayCommand(NewPatient);
+            SavePatientCommand = new RelayCommand(SavePatient);
+            DeletePatientCommand = new RelayCommand(DeletePatient, _ => HasSelectedPatient);
+            SearchPatientsCommand = new RelayCommand(SearchPatients);
+            ClearPatientFormCommand = new RelayCommand(ClearPatientForm);
+
+            LoadAllPatients();
         }
 
         private void Navigate(object parameter)
@@ -745,6 +885,165 @@ namespace _403DesktopApp
             {
                 IsGatingRunning = false;
             }
+        }
+
+        // ── Patient Management Methods ─────────────────────────────────────────
+
+        private void LoadAllPatients()
+        {
+            try
+            {
+                var patients = _patientService.LoadAllPatients();
+                Patients = new ObservableCollection<PatientProfile>(patients);
+                PatientStatusMessage = $"{patients.Count} patient(s) loaded.";
+            }
+            catch (Exception ex)
+            {
+                PatientStatusMessage = $"Error loading patients: {ex.Message}";
+            }
+        }
+
+        private void NewPatient(object parameter)
+        {
+            SelectedPatient = null;
+            IsEditingPatient = false;
+            ClearPatientFormFields();
+            PatientStatusMessage = "Enter new patient details and click Save.";
+        }
+
+        private void SavePatient(object parameter)
+        {
+            var profile = IsEditingPatient && _selectedPatient != null
+                ? _selectedPatient
+                : new PatientProfile();
+
+            profile.FirstName = PatFirstName.Trim();
+            profile.LastName = PatLastName.Trim();
+            profile.DateOfBirth = PatDateOfBirth;
+            profile.Gender = PatGender.Trim();
+            profile.MedicalRecordNumber = PatMrn.Trim();
+            profile.PhoneNumber = PatPhone.Trim();
+            profile.Email = PatEmail.Trim();
+            profile.Address = PatAddress.Trim();
+            profile.EmergencyContactName = PatEmergencyName.Trim();
+            profile.EmergencyContactPhone = PatEmergencyPhone.Trim();
+            profile.MedicalNotes = PatNotes.Trim();
+
+            if (!IsEditingPatient)
+            {
+                profile.CreatedDate = DateTime.UtcNow;
+                profile.CreatedByProviderId =
+                    AuthenticationService.CurrentProvider?.ProviderId ?? "UNKNOWN";
+            }
+
+            string? error = PatientService.ValidateProfile(profile);
+            if (error != null)
+            {
+                PatientStatusMessage = $"Validation error: {error}";
+                return;
+            }
+
+            try
+            {
+                _patientService.SavePatient(profile);
+                PatientStatusMessage = IsEditingPatient
+                    ? $"Patient '{profile.FullName}' updated successfully."
+                    : $"Patient '{profile.FullName}' created successfully.";
+                LoadAllPatients();
+
+                // Select the saved patient in the list
+                SelectedPatient = Patients.FirstOrDefault(p => p.PatientId == profile.PatientId);
+                IsEditingPatient = true;
+            }
+            catch (Exception ex)
+            {
+                PatientStatusMessage = $"Error saving patient: {ex.Message}";
+            }
+        }
+
+        private void DeletePatient(object parameter)
+        {
+            if (_selectedPatient == null) return;
+
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete patient '{_selectedPatient.FullName}'?\n\n" +
+                "This action cannot be undone.",
+                "Confirm Delete",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                string name = _selectedPatient.FullName;
+                _patientService.DeletePatient(_selectedPatient.PatientId);
+                PatientStatusMessage = $"Patient '{name}' deleted.";
+                ClearPatientFormFields();
+                SelectedPatient = null;
+                IsEditingPatient = false;
+                LoadAllPatients();
+            }
+            catch (Exception ex)
+            {
+                PatientStatusMessage = $"Error deleting patient: {ex.Message}";
+            }
+        }
+
+        private void SearchPatients(object parameter)
+        {
+            try
+            {
+                var results = _patientService.SearchPatients(PatientSearchQuery);
+                Patients = new ObservableCollection<PatientProfile>(results);
+                PatientStatusMessage = string.IsNullOrWhiteSpace(PatientSearchQuery)
+                    ? $"{results.Count} patient(s) found."
+                    : $"{results.Count} result(s) for \"{PatientSearchQuery}\".";
+            }
+            catch (Exception ex)
+            {
+                PatientStatusMessage = $"Search error: {ex.Message}";
+            }
+        }
+
+        private void ClearPatientForm(object parameter)
+        {
+            ClearPatientFormFields();
+            SelectedPatient = null;
+            IsEditingPatient = false;
+            PatientStatusMessage = "Form cleared.";
+        }
+
+        private void LoadPatientIntoForm(PatientProfile patient)
+        {
+            PatFirstName = patient.FirstName;
+            PatLastName = patient.LastName;
+            PatDateOfBirth = patient.DateOfBirth;
+            PatGender = patient.Gender;
+            PatMrn = patient.MedicalRecordNumber;
+            PatPhone = patient.PhoneNumber;
+            PatEmail = patient.Email;
+            PatAddress = patient.Address;
+            PatEmergencyName = patient.EmergencyContactName;
+            PatEmergencyPhone = patient.EmergencyContactPhone;
+            PatNotes = patient.MedicalNotes;
+            IsEditingPatient = true;
+            PatientStatusMessage = $"Editing: {patient.FullName}";
+        }
+
+        private void ClearPatientFormFields()
+        {
+            PatFirstName = "";
+            PatLastName = "";
+            PatDateOfBirth = DateTime.Today;
+            PatGender = "";
+            PatMrn = "";
+            PatPhone = "";
+            PatEmail = "";
+            PatAddress = "";
+            PatEmergencyName = "";
+            PatEmergencyPhone = "";
+            PatNotes = "";
         }
 
         private void UpdateImageInfo()
