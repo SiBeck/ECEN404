@@ -6,6 +6,10 @@
         MinHeight="500" MinWidth="800"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -97,6 +101,8 @@
 
             <!-- Image Viewer Tab -->
             <TabItem Header="Image Viewer">
+                <Grid>
+                <!-- Main Image Viewer content -->
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -305,6 +311,105 @@
                                        Margin="20,0,0,0"/>
                         </Grid>
                     </Border>
+                </Grid>
+
+                <!-- Patient Picker Overlay -->
+                <Border Visibility="{Binding IsPatientPickerVisible, Converter={StaticResource BoolToVisConverter}}"
+                        Background="#CC000000"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch">
+                    <Border Background="White"
+                            CornerRadius="8"
+                            Padding="20"
+                            MaxWidth="500"
+                            MaxHeight="520"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            BorderBrush="#007ACC"
+                            BorderThickness="2">
+                        <StackPanel>
+                            <TextBlock Text="Save Image to Patient"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,12"/>
+
+                            <!-- Patient search -->
+                            <TextBlock Text="Select Patient" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding PickerSearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="6,4"
+                                         Margin="0,0,5,0"/>
+                                <Button Grid.Column="1"
+                                        Content="Search"
+                                        Command="{Binding SearchPickerPatientsCommand}"
+                                        Padding="10,4"
+                                        Background="#007ACC"
+                                        Foreground="White"
+                                        BorderThickness="0"
+                                        Cursor="Hand"/>
+                            </Grid>
+
+                            <ListBox ItemsSource="{Binding PickerPatients}"
+                                     SelectedItem="{Binding PickerSelectedPatient}"
+                                     Height="140"
+                                     Margin="0,0,0,10"
+                                     BorderBrush="#CCCCCC"
+                                     BorderThickness="1">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="4,2">
+                                            <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" FontSize="12"/>
+                                            <TextBlock FontSize="10" Foreground="#777777">
+                                                <Run Text="MRN: "/><Run Text="{Binding MedicalRecordNumber, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- Image tag -->
+                            <TextBlock Text="Image Tag" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ImageTag, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="6,4"
+                                     Margin="0,0,0,8"
+                                     ToolTip="e.g. 'Cardiac MRI - Gated', 'Baseline Scan'"/>
+
+                            <!-- Image description -->
+                            <TextBlock Text="Description (optional)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ImageDescription, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="6,4"
+                                     Margin="0,0,0,14"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MaxHeight="60"
+                                     VerticalScrollBarVisibility="Auto"/>
+
+                            <!-- Action buttons -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Cancel"
+                                        Command="{Binding CancelSaveToPatientCommand}"
+                                        Padding="16,6"
+                                        Margin="0,0,8,0"
+                                        Background="#E0E0E0"
+                                        BorderThickness="0"
+                                        Cursor="Hand"/>
+                                <Button Content="Save to Patient"
+                                        Command="{Binding ConfirmSaveToPatientCommand}"
+                                        Padding="16,6"
+                                        Background="#28A745"
+                                        Foreground="White"
+                                        FontWeight="SemiBold"
+                                        BorderThickness="0"
+                                        Cursor="Hand"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Border>
                 </Grid>
             </TabItem>
 
@@ -765,6 +870,116 @@
                                              MinHeight="80"
                                              MaxHeight="160"
                                              VerticalScrollBarVisibility="Auto"/>
+
+                                    <!-- Separator -->
+                                    <Separator Margin="0,10"/>
+
+                                    <!-- Associated Images -->
+                                    <TextBlock Text="Associated Images"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#007ACC"
+                                               Margin="0,5,0,8"/>
+
+                                    <ListBox ItemsSource="{Binding SelectedPatientImages}"
+                                             SelectedItem="{Binding SelectedPatientImage}"
+                                             MinHeight="60"
+                                             MaxHeight="160"
+                                             BorderBrush="#CCCCCC"
+                                             BorderThickness="1"
+                                             Margin="0,0,0,8">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="4,3">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="{Binding DisplayLabel}"
+                                                                   FontWeight="SemiBold"
+                                                                   FontSize="12"/>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding SourceType}"
+                                                                       FontSize="10"
+                                                                       Foreground="#007ACC"
+                                                                       Margin="0,0,8,0"/>
+                                                            <TextBlock Text="{Binding SavedDate, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}"
+                                                                       FontSize="10"
+                                                                       Foreground="#777777"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding Description}"
+                                                                   FontSize="10"
+                                                                   Foreground="#555555"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <!-- Image Tag Editing -->
+                                    <Border Visibility="{Binding HasSelectedImage, Converter={StaticResource BoolToVisConverter}}"
+                                            Background="#F5F5F5"
+                                            CornerRadius="4"
+                                            Padding="10"
+                                            Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Edit Image Details"
+                                                       FontWeight="SemiBold"
+                                                       Margin="0,0,0,6"/>
+
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="15"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Tag" FontSize="11" Margin="0,0,0,2"/>
+                                                    <TextBox Text="{Binding EditImageTag, UpdateSourceTrigger=PropertyChanged}"
+                                                             Padding="6,4"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Description" FontSize="11" Margin="0,0,0,2"/>
+                                                    <TextBox Text="{Binding EditImageDescription, UpdateSourceTrigger=PropertyChanged}"
+                                                             Padding="6,4"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="Update Tag"
+                                                        Command="{Binding UpdateImageTagCommand}"
+                                                        Padding="10,4"
+                                                        Margin="0,0,6,0"
+                                                        Background="#007ACC"
+                                                        Foreground="White"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        FontSize="11"/>
+                                                <Button Content="View in Viewer"
+                                                        Command="{Binding ViewPatientImageCommand}"
+                                                        Padding="10,4"
+                                                        Margin="0,0,6,0"
+                                                        Background="#6F42C1"
+                                                        Foreground="White"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        FontSize="11"/>
+                                                <Button Content="Remove"
+                                                        Command="{Binding RemovePatientImageCommand}"
+                                                        Padding="10,4"
+                                                        Background="#DC3545"
+                                                        Foreground="White"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        FontSize="11"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </ScrollViewer>
 

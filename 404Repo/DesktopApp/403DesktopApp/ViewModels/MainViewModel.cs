@@ -62,6 +62,21 @@ namespace _403DesktopApp
         private string _patEmergencyPhone = "";
         private string _patNotes = "";
 
+        // Patient picker overlay fields (shown from Image Viewer "Save to Patient File")
+        private bool _isPatientPickerVisible;
+        private string _pickerSearchQuery = "";
+        private ObservableCollection<PatientProfile> _pickerPatients = new();
+        private PatientProfile? _pickerSelectedPatient;
+        private string _imageTag = "";
+        private string _imageDescription = "";
+        private string _imageSourceType = "Manual";
+
+        // Patient images display fields (shown in Patients tab)
+        private ObservableCollection<PatientImage> _selectedPatientImages = new();
+        private PatientImage? _selectedPatientImage;
+        private string _editImageTag = "";
+        private string _editImageDescription = "";
+
         public string CurrentPage
         {
             get => _currentPage;
@@ -315,6 +330,89 @@ namespace _403DesktopApp
             set { _patNotes = value; OnPropertyChanged(); }
         }
 
+        // ── Patient Picker Overlay Properties ──────────────────────────────────
+
+        public bool IsPatientPickerVisible
+        {
+            get => _isPatientPickerVisible;
+            set { _isPatientPickerVisible = value; OnPropertyChanged(); }
+        }
+
+        public string PickerSearchQuery
+        {
+            get => _pickerSearchQuery;
+            set { _pickerSearchQuery = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<PatientProfile> PickerPatients
+        {
+            get => _pickerPatients;
+            set { _pickerPatients = value; OnPropertyChanged(); }
+        }
+
+        public PatientProfile? PickerSelectedPatient
+        {
+            get => _pickerSelectedPatient;
+            set
+            {
+                _pickerSelectedPatient = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanConfirmSaveToPatient));
+            }
+        }
+
+        public string ImageTag
+        {
+            get => _imageTag;
+            set { _imageTag = value; OnPropertyChanged(); }
+        }
+
+        public string ImageDescription
+        {
+            get => _imageDescription;
+            set { _imageDescription = value; OnPropertyChanged(); }
+        }
+
+        public bool CanConfirmSaveToPatient => _pickerSelectedPatient != null;
+
+        // ── Patient Images Display Properties ──────────────────────────────────
+
+        public ObservableCollection<PatientImage> SelectedPatientImages
+        {
+            get => _selectedPatientImages;
+            set { _selectedPatientImages = value; OnPropertyChanged(); }
+        }
+
+        public PatientImage? SelectedPatientImage
+        {
+            get => _selectedPatientImage;
+            set
+            {
+                _selectedPatientImage = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelectedImage));
+                if (value != null)
+                {
+                    EditImageTag = value.Tag;
+                    EditImageDescription = value.Description;
+                }
+            }
+        }
+
+        public bool HasSelectedImage => _selectedPatientImage != null;
+
+        public string EditImageTag
+        {
+            get => _editImageTag;
+            set { _editImageTag = value; OnPropertyChanged(); }
+        }
+
+        public string EditImageDescription
+        {
+            get => _editImageDescription;
+            set { _editImageDescription = value; OnPropertyChanged(); }
+        }
+
         public ICommand NavigateCommand { get; }
         public ICommand SubmitCommand { get; }
         public ICommand OpenImageCommand { get; }
@@ -337,6 +435,14 @@ namespace _403DesktopApp
         public ICommand DeletePatientCommand { get; }
         public ICommand SearchPatientsCommand { get; }
         public ICommand ClearPatientFormCommand { get; }
+        // Patient picker commands
+        public ICommand ConfirmSaveToPatientCommand { get; }
+        public ICommand CancelSaveToPatientCommand { get; }
+        public ICommand SearchPickerPatientsCommand { get; }
+        // Patient image commands
+        public ICommand UpdateImageTagCommand { get; }
+        public ICommand RemovePatientImageCommand { get; }
+        public ICommand ViewPatientImageCommand { get; }
 
         public MainViewModel()
         {
@@ -362,6 +468,12 @@ namespace _403DesktopApp
             DeletePatientCommand = new RelayCommand(DeletePatient, _ => HasSelectedPatient);
             SearchPatientsCommand = new RelayCommand(SearchPatients);
             ClearPatientFormCommand = new RelayCommand(ClearPatientForm);
+            ConfirmSaveToPatientCommand = new RelayCommand(ConfirmSaveToPatient, _ => CanConfirmSaveToPatient);
+            CancelSaveToPatientCommand = new RelayCommand(CancelSaveToPatient);
+            SearchPickerPatientsCommand = new RelayCommand(SearchPickerPatients);
+            UpdateImageTagCommand = new RelayCommand(UpdateImageTag, _ => HasSelectedImage && HasSelectedPatient);
+            RemovePatientImageCommand = new RelayCommand(RemovePatientImage, _ => HasSelectedImage && HasSelectedPatient);
+            ViewPatientImageCommand = new RelayCommand(ViewPatientImage, _ => HasSelectedImage && HasSelectedPatient);
 
             LoadAllPatients();
         }
@@ -700,50 +812,212 @@ namespace _403DesktopApp
                 return;
             }
 
-            var saveDialog = new SaveFileDialog
-            {
-                Title = "Save Image to Patient File",
-                Filter = "DICOM File|*.dcm|PNG Image|*.png|All Files|*.*",
-                FilterIndex = 1,
-                FileName = string.IsNullOrEmpty(_currentImagePath)
-                    ? "patient_image"
-                    : Path.GetFileNameWithoutExtension(_currentImagePath)
-            };
+            // Determine source type automatically
+            if (_isFilteredSeriesMode)
+                _imageSourceType = "Scan Filter";
+            else if (!string.IsNullOrEmpty(_gatingResultSummary))
+                _imageSourceType = "Cardiac Gating";
+            else
+                _imageSourceType = "Manual Import";
 
-            if (saveDialog.ShowDialog() != true) return;
+            // Load all patients into the picker and show the overlay
+            var allPatients = _patientService.LoadAllPatients();
+            PickerPatients = new ObservableCollection<PatientProfile>(allPatients);
+            PickerSelectedPatient = null;
+            PickerSearchQuery = "";
+            ImageTag = "";
+            ImageDescription = "";
+            IsPatientPickerVisible = true;
+            StatusText = "Select a patient to save this image to.";
+        }
+
+        private void ConfirmSaveToPatient(object parameter)
+        {
+            if (PickerSelectedPatient == null || CurrentImageSource == null) return;
 
             try
             {
-                string savePath = saveDialog.FileName;
-                string ext = Path.GetExtension(savePath).ToLowerInvariant();
+                // Ensure we have a file on disk to copy into managed storage.
+                // If we have the original DICOM, use it; otherwise save a temp PNG.
+                string fileToSave = _currentImagePath;
+                bool usingTempFile = false;
 
-                if (ext == ".dcm" || ext == ".dicom")
+                if (string.IsNullOrEmpty(fileToSave) || !File.Exists(fileToSave))
                 {
-                    // If we have a loaded DICOM file, copy it to the patient file location
-                    if (!string.IsNullOrEmpty(_currentImagePath) && File.Exists(_currentImagePath)
-                        && (Path.GetExtension(_currentImagePath).Equals(".dcm", StringComparison.OrdinalIgnoreCase)
-                            || Path.GetExtension(_currentImagePath).Equals(".dicom", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(savePath) ?? ".");
-                        File.Copy(_currentImagePath, savePath, overwrite: true);
-                    }
-                    else
-                    {
-                        // Create a new DICOM Secondary Capture from the displayed image
-                        SaveBitmapSourceAsDicom(CurrentImageSource, savePath);
-                    }
-                }
-                else
-                {
-                    // Save as PNG (or other bitmap format)
-                    SaveBitmapSourceAsPng(CurrentImageSource, savePath);
+                    // No source file on disk — render current image to a temp PNG
+                    string tempPath = Path.Combine(Path.GetTempPath(),
+                        $"BioMetrix_save_{Guid.NewGuid():N}.png");
+                    SaveBitmapSourceAsPng(CurrentImageSource, tempPath);
+                    fileToSave = tempPath;
+                    usingTempFile = true;
                 }
 
-                StatusText = $"Image saved to: {savePath}";
+                var savedImage = _patientService.SaveImageForPatient(
+                    PickerSelectedPatient.PatientId,
+                    fileToSave,
+                    ImageTag,
+                    ImageDescription,
+                    _imageSourceType);
+
+                if (usingTempFile && File.Exists(fileToSave))
+                    File.Delete(fileToSave);
+
+                IsPatientPickerVisible = false;
+                StatusText = $"Image saved to patient '{PickerSelectedPatient.FullName}' with tag '{savedImage.Tag}'.";
+
+                // Refresh patient list so image counts are up to date
+                LoadAllPatients();
+
+                // If the saved patient is currently selected in the Patients tab, refresh images
+                if (_selectedPatient?.PatientId == PickerSelectedPatient.PatientId)
+                    RefreshSelectedPatientImages();
             }
             catch (Exception ex)
             {
-                StatusText = $"Error saving image: {ex.Message}";
+                StatusText = $"Error saving image to patient: {ex.Message}";
+            }
+        }
+
+        private void CancelSaveToPatient(object parameter)
+        {
+            IsPatientPickerVisible = false;
+            StatusText = "Save to patient cancelled.";
+        }
+
+        private void SearchPickerPatients(object parameter)
+        {
+            var results = _patientService.SearchPatients(PickerSearchQuery);
+            PickerPatients = new ObservableCollection<PatientProfile>(results);
+        }
+
+        // ── Patient Image Management Methods ──────────────────────────────────
+
+        private void RefreshSelectedPatientImages()
+        {
+            if (_selectedPatient == null)
+            {
+                SelectedPatientImages = new ObservableCollection<PatientImage>();
+                return;
+            }
+
+            // Reload from storage to get fresh data
+            var fresh = _patientService.LoadPatient(_selectedPatient.PatientId);
+            if (fresh != null)
+                SelectedPatientImages = new ObservableCollection<PatientImage>(fresh.AssociatedImages);
+            else
+                SelectedPatientImages = new ObservableCollection<PatientImage>();
+        }
+
+        private void UpdateImageTag(object parameter)
+        {
+            if (_selectedPatient == null || _selectedPatientImage == null) return;
+
+            try
+            {
+                _patientService.UpdateImageMetadata(
+                    _selectedPatient.PatientId,
+                    _selectedPatientImage.ImageId,
+                    EditImageTag,
+                    EditImageDescription);
+
+                PatientStatusMessage = $"Image tag updated to '{EditImageTag}'.";
+                RefreshSelectedPatientImages();
+            }
+            catch (Exception ex)
+            {
+                PatientStatusMessage = $"Error updating image tag: {ex.Message}";
+            }
+        }
+
+        private void RemovePatientImage(object parameter)
+        {
+            if (_selectedPatient == null || _selectedPatientImage == null) return;
+
+            var result = MessageBox.Show(
+                $"Remove image '{_selectedPatientImage.DisplayLabel}' from this patient?\n\n" +
+                "The image file will be permanently deleted.",
+                "Confirm Remove Image",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                _patientService.RemoveImageFromPatient(
+                    _selectedPatient.PatientId,
+                    _selectedPatientImage.ImageId);
+
+                PatientStatusMessage = "Image removed.";
+                SelectedPatientImage = null;
+                EditImageTag = "";
+                EditImageDescription = "";
+                RefreshSelectedPatientImages();
+            }
+            catch (Exception ex)
+            {
+                PatientStatusMessage = $"Error removing image: {ex.Message}";
+            }
+        }
+
+        private void ViewPatientImage(object parameter)
+        {
+            if (_selectedPatient == null || _selectedPatientImage == null) return;
+
+            try
+            {
+                string fullPath = _patientService.GetImageFullPath(
+                    _selectedPatient.PatientId,
+                    _selectedPatientImage.FileName);
+
+                if (!File.Exists(fullPath))
+                {
+                    PatientStatusMessage = "Image file not found on disk.";
+                    return;
+                }
+
+                string ext = Path.GetExtension(fullPath).ToLowerInvariant();
+                if (ext == ".dcm" || ext == ".dicom")
+                {
+                    // Load as DICOM into the Image Viewer
+                    _isFilteredSeriesMode = false;
+                    _filteredDicomFiles.Clear();
+                    FilterResultSummary = "";
+                    _currentImagePath = fullPath;
+
+                    var dicomFile = DicomFile.Open(fullPath);
+                    _currentDicomImage = new DicomImage(dicomFile.Dataset);
+                    TotalFrames = _currentDicomImage.NumberOfFrames;
+                    CurrentFrameIndex = 0;
+                    LoadCurrentFrame();
+                    ZoomLevel = 1.0;
+                }
+                else
+                {
+                    // Load as bitmap
+                    _isFilteredSeriesMode = false;
+                    _filteredDicomFiles.Clear();
+                    _currentDicomImage = null;
+                    _currentImagePath = fullPath;
+                    TotalFrames = 1;
+                    CurrentFrameIndex = 0;
+
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(fullPath, UriKind.Absolute);
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    CurrentImageSource = bitmap;
+                    ZoomLevel = 1.0;
+                }
+
+                StatusText = $"Viewing patient image: {_selectedPatientImage.DisplayLabel}";
+                PatientStatusMessage = "Image loaded into viewer. Switch to Image Viewer tab to see it.";
+            }
+            catch (Exception ex)
+            {
+                PatientStatusMessage = $"Error loading image: {ex.Message}";
             }
         }
 
@@ -1011,6 +1285,10 @@ namespace _403DesktopApp
             ClearPatientFormFields();
             SelectedPatient = null;
             IsEditingPatient = false;
+            SelectedPatientImages = new ObservableCollection<PatientImage>();
+            SelectedPatientImage = null;
+            EditImageTag = "";
+            EditImageDescription = "";
             PatientStatusMessage = "Form cleared.";
         }
 
@@ -1029,6 +1307,7 @@ namespace _403DesktopApp
             PatNotes = patient.MedicalNotes;
             IsEditingPatient = true;
             PatientStatusMessage = $"Editing: {patient.FullName}";
+            RefreshSelectedPatientImages();
         }
 
         private void ClearPatientFormFields()

@@ -16,7 +16,7 @@ namespace _403DesktopApp.Models
         public string EmergencyContactName { get; set; } = "";
         public string EmergencyContactPhone { get; set; } = "";
         public string MedicalNotes { get; set; } = "";
-        public List<string> AssociatedImagePaths { get; set; } = new();
+        public List<PatientImage> AssociatedImages { get; set; } = new();
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public string CreatedByProviderId { get; set; } = "";
         public DateTime LastModifiedDate { get; set; } = DateTime.UtcNow;
