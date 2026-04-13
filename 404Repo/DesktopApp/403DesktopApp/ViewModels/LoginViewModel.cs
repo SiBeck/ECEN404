@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -34,13 +35,16 @@ namespace _403DesktopApp
 
         public ICommand LoginCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand ForgotPasswordCommand { get; }
 
         public LoginViewModel(Window window)
         {
             _window = window;
             _authService = new AuthenticationService();
+
             LoginCommand = new RelayCommand(Login);
             CancelCommand = new RelayCommand(Cancel);
+            ForgotPasswordCommand = new RelayCommand(ForgotPassword);
         }
 
         private void Login(object parameter)
@@ -75,6 +79,21 @@ namespace _403DesktopApp
         {
             _window.DialogResult = false;
             _window.Close();
+        }
+
+        private void ForgotPassword(object parameter)
+        {
+            // Open the verification window and pass the current ProviderId
+            var vm = new ForgotPasswordViewModel(ProviderId, _authService);
+            var dialog = new ForgotPasswordWindow
+            {
+                DataContext = vm,
+                Owner = _window,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            dialog.ShowDialog();
+            // dialog handles success/error messaging; optionally react to dialog.DialogResult here
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

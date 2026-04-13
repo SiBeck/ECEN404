@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,6 +26,7 @@ namespace _403DesktopApp.Services
                     FirstName = "John",
                     LastName = "Smith",
                     Specialty = "Cardiology",
+                    Email = "john.smith@demo.org",
                     // Password is "demo123" - hashed with PBKDF2
                     PasswordHash = _passwordHasher.HashPassword("demo123"),
                     IsActive = true
@@ -35,6 +37,7 @@ namespace _403DesktopApp.Services
                     FirstName = "Sarah",
                     LastName = "Johnson",
                     Specialty = "Pediatrics",
+                    Email = "sarah.johnson@demo.org",
                     // Password is "demo456"
                     PasswordHash = _passwordHasher.HashPassword("demo456"),
                     IsActive = true
@@ -45,6 +48,7 @@ namespace _403DesktopApp.Services
                     FirstName = "Emily",
                     LastName = "Davis",
                     Specialty = "Family Medicine",
+                    Email = "emily.davis@demo.org",
                     // Password is "demo789"
                     PasswordHash = _passwordHasher.HashPassword("demo789"),
                     IsActive = true
@@ -77,9 +81,8 @@ namespace _403DesktopApp.Services
             return _passwordHasher.HashPassword(password);
         }
     }
-    // ===================================
-    // PasswordHasher.cs - Secure Password Hashing using PBKDF2
-    // ===================================
+
+    // PasswordHasher class unchanged...
     public class PasswordHasher
     {
         private const int SaltSize = 16; // 128 bits
