@@ -152,6 +152,9 @@ namespace _403DesktopApp.Services
                 return false;
 
             File.Delete(filePath);
+            AuditLogger.Log(
+                AuthenticationService.CurrentProvider?.ProviderId ?? "UNKNOWN",
+                "DELETE", "Patient", patientId);
             return true;
         }
 
@@ -234,6 +237,77 @@ namespace _403DesktopApp.Services
             profile.AssociatedImages.Remove(image);
             profile.LastModifiedDate = DateTime.UtcNow;
             SavePatient(profile);
+
+            AuditLogger.Log(
+                AuthenticationService.CurrentProvider?.ProviderId ?? "UNKNOWN",
+                "DELETE", "PatientImage", $"{patientId}/{imageId}");
+        }
+
+        /// <summary>
+        /// Saves a list of files into the patient's managed image directory as a series,
+        /// records metadata for each, attaches filter stats to the first image, and
+        /// cleans up the source temp directory when done.
+        /// </summary>
+        public List<PatientImage> SaveImageSeriesForPatient(
+            string patientId,
+            IEnumerable<string> sourceFilePaths,
+            string seriesTag,
+            string description,
+            string sourceType,
+            PatientImage.ScanFilterStats? filterStats = null)
+        {
+            var profile = LoadPatient(patientId)
+                ?? throw new InvalidOperationException($"Patient '{patientId}' not found.");
+
+            string imageDir = GetPatientImageDir(patientId);
+            Directory.CreateDirectory(imageDir);
+
+            var savedImages = new List<PatientImage>();
+            string? tempDirToClean = null;
+            bool isFirst = true;
+
+            foreach (var sourceFilePath in sourceFilePaths)
+            {
+                string ext = Path.GetExtension(sourceFilePath);
+                var image = new PatientImage
+                {
+                    Tag = seriesTag?.Trim() ?? "",
+                    Description = description?.Trim() ?? "",
+                    SourceType = sourceType ?? "",
+                    SavedDate = DateTime.UtcNow,
+                    SavedByProviderId =
+                        AuthenticationService.CurrentProvider?.ProviderId ?? "UNKNOWN",
+                    FilterStats = isFirst ? filterStats : null
+                };
+
+                string destPath = Path.Combine(imageDir, $"{image.ImageId}{ext}");
+                File.Copy(sourceFilePath, destPath, overwrite: true);
+                image.FileName = $"{image.ImageId}{ext}";
+
+                profile.AssociatedImages.Add(image);
+                savedImages.Add(image);
+
+                if (tempDirToClean == null)
+                {
+                    string? dir = Path.GetDirectoryName(sourceFilePath);
+                    if (dir != null && Path.GetFileName(dir).StartsWith("BioMetrix_"))
+                        tempDirToClean = dir;
+                }
+
+                isFirst = false;
+            }
+
+            profile.LastModifiedDate = DateTime.UtcNow;
+            SavePatient(profile);
+
+            // Remove temp output dir now that all files are safely in managed storage
+            if (tempDirToClean != null && Directory.Exists(tempDirToClean))
+            {
+                try { Directory.Delete(tempDirToClean, recursive: true); }
+                catch { /* non-fatal */ }
+            }
+
+            return savedImages;
         }
 
         /// <summary>

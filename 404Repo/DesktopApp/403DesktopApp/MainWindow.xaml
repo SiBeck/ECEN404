@@ -199,6 +199,17 @@
                                        FontStyle="Italic"
                                        Foreground="#555555"/>
 
+                            <Button Content="Save Series to Patient"
+                                    Command="{Binding SaveFilteredSeriesCommand}"
+                                    Padding="15,8"
+                                    Margin="0,0,10,0"
+                                    Background="#6F42C1"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    ToolTip="Save all filtered DICOM files to a patient record"
+                                    Visibility="{Binding HasFilteredSeries, Converter={StaticResource BoolToVisConverter}}"/>
+
                             <!-- Frame Navigation Controls -->
                             <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" 
                                        Margin="10,0"/>
