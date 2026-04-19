@@ -14,35 +14,25 @@ namespace _403DesktopApp.Services
     /// </summary>
     public class PatientService
     {
-        private const int KeySize = 32;       // AES-256
         private const int IvSize = 16;        // AES block size
-        private const int SaltSize = 16;      // PBKDF2 salt
-        private const int Iterations = 100_000; // OWASP-compliant PBKDF2 iterations
 
         private readonly string _storageDir;
         private readonly byte[] _encryptionKey;
+        private readonly DatabaseSyncService _dbSync = new();
 
         /// <summary>
-        /// Initializes the patient service. Derives an AES-256 encryption key
-        /// from the given passphrase using PBKDF2-SHA256.
+        /// Initializes the patient service. The AES-256 encryption key is
+        /// loaded from (or created in) the DPAPI-protected key file via
+        /// EncryptionKeyManager — no passphrases in source code.
         /// </summary>
-        /// <param name="passphrase">
-        /// Passphrase used to derive the encryption key. In production this
-        /// should come from a secure key store or hardware security module.
-        /// </param>
-        public PatientService(string passphrase = "BioMetrix-PHI-Encryption-Key")
+        public PatientService()
         {
             _storageDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "BioMetrix", "patients");
             Directory.CreateDirectory(_storageDir);
 
-            // Derive a stable key from the passphrase using a fixed salt.
-            // The fixed salt ensures the same key is derived across sessions.
-            byte[] fixedSalt = Encoding.UTF8.GetBytes("BioMetrix-Salt-v1");
-            using var kdf = new Rfc2898DeriveBytes(
-                passphrase, fixedSalt, Iterations, HashAlgorithmName.SHA256);
-            _encryptionKey = kdf.GetBytes(KeySize);
+            _encryptionKey = EncryptionKeyManager.GetOrCreateKey();
         }
 
         /// <summary>
@@ -89,6 +79,9 @@ namespace _403DesktopApp.Services
 
             string filePath = GetPatientFilePath(profile.PatientId);
             File.WriteAllBytes(filePath, ciphertext);
+
+            // Mirror to SQLite API (fire-and-forget; local .enc is primary store)
+            _ = _dbSync.UpsertPatientAsync(profile);
         }
 
         /// <summary>
@@ -155,6 +148,7 @@ namespace _403DesktopApp.Services
             AuditLogger.Log(
                 AuthenticationService.CurrentProvider?.ProviderId ?? "UNKNOWN",
                 "DELETE", "Patient", patientId);
+            _ = _dbSync.DeletePatientAsync(patientId);
             return true;
         }
 

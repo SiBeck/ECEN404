@@ -29,6 +29,8 @@
     <PackageReference Include="fo-dicom.Desktop" Version="4.0.8" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.9" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+    <!-- DPAPI-based key protection for PHI encryption key storage -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
