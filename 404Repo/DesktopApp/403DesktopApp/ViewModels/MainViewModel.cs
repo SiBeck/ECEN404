@@ -34,6 +34,8 @@ namespace _403DesktopApp
         private string _filterResultSummary = "";
         private List<string> _filteredDicomFiles = new();
         private bool _isFilteredSeriesMode;
+        private ScanFilterResult? _lastFilterResult;
+        private bool _isSavingSeries;
 
         // Cardiac gating fields
         private readonly CardiacGatingService _cardiacGatingService = new();
@@ -176,6 +178,8 @@ namespace _403DesktopApp
             get => _filterResultSummary;
             set { _filterResultSummary = value; OnPropertyChanged(); }
         }
+
+        public bool HasFilteredSeries => _filteredDicomFiles.Count > 0;
 
         // Cardiac gating properties
         public bool IsGatingRunning
@@ -425,6 +429,7 @@ namespace _403DesktopApp
         public ICommand FirstFrameCommand { get; }
         public ICommand LastFrameCommand { get; }
         public ICommand RunScanFilterCommand { get; }
+        public ICommand SaveFilteredSeriesCommand { get; }
         public ICommand SaveImageCommand { get; }
         public ICommand BrowseCsvCommand { get; }
         public ICommand BrowseMrdCommand { get; }
@@ -458,6 +463,8 @@ namespace _403DesktopApp
             FirstFrameCommand = new RelayCommand(FirstFrame, CanGoPreviousFrame);
             LastFrameCommand = new RelayCommand(LastFrame, CanGoNextFrame);
             RunScanFilterCommand = new RelayCommand(RunScanFilter, _ => !_isFilterRunning);
+            SaveFilteredSeriesCommand = new RelayCommand(SaveFilteredSeriesToPatient,
+                _ => _filteredDicomFiles.Count > 0 && !_isFilterRunning);
             SaveImageCommand = new RelayCommand(SaveImageToPatientFile, _ => CurrentImageSource != null);
             BrowseCsvCommand = new RelayCommand(BrowseCsv);
             BrowseMrdCommand = new RelayCommand(BrowseMrd);
@@ -631,7 +638,9 @@ namespace _403DesktopApp
             // Reset filtered series mode
             _isFilteredSeriesMode = false;
             _filteredDicomFiles.Clear();
+            _lastFilterResult = null;
             FilterResultSummary = "";
+            OnPropertyChanged(nameof(HasFilteredSeries));
         }
 
         private void ZoomIn(object parameter)
@@ -755,6 +764,7 @@ namespace _403DesktopApp
 
                 if (result.Success)
                 {
+                    _lastFilterResult = result;
                     FilterResultSummary =
                         $"Total lines: {result.TotalLines}, " +
                         $"Clean: {result.CleanBaseLines}, " +
@@ -800,6 +810,7 @@ namespace _403DesktopApp
             TotalFrames = files.Count;
             CurrentFrameIndex = 0;
             ZoomLevel = 1.0;
+            OnPropertyChanged(nameof(HasFilteredSeries));
 
             LoadCurrentFrame();
         }
@@ -831,39 +842,88 @@ namespace _403DesktopApp
             StatusText = "Select a patient to save this image to.";
         }
 
+        private void SaveFilteredSeriesToPatient(object parameter)
+        {
+            if (_filteredDicomFiles.Count == 0) return;
+
+            var allPatients = _patientService.LoadAllPatients();
+            PickerPatients = new ObservableCollection<PatientProfile>(allPatients);
+            PickerSelectedPatient = null;
+            PickerSearchQuery = "";
+            ImageTag = "Filtered Series";
+            ImageDescription = _filterResultSummary;
+            _isSavingSeries = true;
+            IsPatientPickerVisible = true;
+            StatusText = "Select a patient to save the filtered series to.";
+        }
+
         private void ConfirmSaveToPatient(object parameter)
         {
-            if (PickerSelectedPatient == null || CurrentImageSource == null) return;
+            if (PickerSelectedPatient == null) return;
 
             try
             {
-                // Ensure we have a file on disk to copy into managed storage.
-                // If we have the original DICOM, use it; otherwise save a temp PNG.
-                string fileToSave = _currentImagePath;
-                bool usingTempFile = false;
-
-                if (string.IsNullOrEmpty(fileToSave) || !File.Exists(fileToSave))
+                if (_isSavingSeries)
                 {
-                    // No source file on disk — render current image to a temp PNG
-                    string tempPath = Path.Combine(Path.GetTempPath(),
-                        $"BioMetrix_save_{Guid.NewGuid():N}.png");
-                    SaveBitmapSourceAsPng(CurrentImageSource, tempPath);
-                    fileToSave = tempPath;
-                    usingTempFile = true;
+                    // Save all filtered DICOM files as a series, with filter stats on first image
+                    PatientImage.ScanFilterStats? stats = _lastFilterResult == null ? null
+                        : new PatientImage.ScanFilterStats
+                        {
+                            TotalLines = _lastFilterResult.TotalLines,
+                            CleanBaseLines = _lastFilterResult.CleanBaseLines,
+                            ReplacedLines = _lastFilterResult.ReplacedLines,
+                            UnfixableLines = _lastFilterResult.UnfixableLines
+                        };
+
+                    var savedImages = _patientService.SaveImageSeriesForPatient(
+                        PickerSelectedPatient.PatientId,
+                        _filteredDicomFiles,
+                        ImageTag,
+                        ImageDescription,
+                        "Scan Filter",
+                        stats);
+
+                    // Series has been moved to managed storage — clear local references
+                    _filteredDicomFiles.Clear();
+                    _isFilteredSeriesMode = false;
+                    _lastFilterResult = null;
+                    _isSavingSeries = false;
+                    FilterResultSummary = "";
+                    OnPropertyChanged(nameof(HasFilteredSeries));
+
+                    IsPatientPickerVisible = false;
+                    StatusText = $"Saved {savedImages.Count} image(s) to patient '{PickerSelectedPatient.FullName}'.";
                 }
+                else
+                {
+                    if (CurrentImageSource == null) return;
 
-                var savedImage = _patientService.SaveImageForPatient(
-                    PickerSelectedPatient.PatientId,
-                    fileToSave,
-                    ImageTag,
-                    ImageDescription,
-                    _imageSourceType);
+                    // Single-image save: use the source file on disk, or render to temp PNG
+                    string fileToSave = _currentImagePath;
+                    bool usingTempFile = false;
 
-                if (usingTempFile && File.Exists(fileToSave))
-                    File.Delete(fileToSave);
+                    if (string.IsNullOrEmpty(fileToSave) || !File.Exists(fileToSave))
+                    {
+                        string tempPath = Path.Combine(Path.GetTempPath(),
+                            $"BioMetrix_save_{Guid.NewGuid():N}.png");
+                        SaveBitmapSourceAsPng(CurrentImageSource, tempPath);
+                        fileToSave = tempPath;
+                        usingTempFile = true;
+                    }
 
-                IsPatientPickerVisible = false;
-                StatusText = $"Image saved to patient '{PickerSelectedPatient.FullName}' with tag '{savedImage.Tag}'.";
+                    var savedImage = _patientService.SaveImageForPatient(
+                        PickerSelectedPatient.PatientId,
+                        fileToSave,
+                        ImageTag,
+                        ImageDescription,
+                        _imageSourceType);
+
+                    if (usingTempFile && File.Exists(fileToSave))
+                        File.Delete(fileToSave);
+
+                    IsPatientPickerVisible = false;
+                    StatusText = $"Image saved to patient '{PickerSelectedPatient.FullName}' with tag '{savedImage.Tag}'.";
+                }
 
                 // Refresh patient list so image counts are up to date
                 LoadAllPatients();
@@ -874,6 +934,7 @@ namespace _403DesktopApp
             }
             catch (Exception ex)
             {
+                _isSavingSeries = false;
                 StatusText = $"Error saving image to patient: {ex.Message}";
             }
         }
@@ -881,6 +942,7 @@ namespace _403DesktopApp
         private void CancelSaveToPatient(object parameter)
         {
             IsPatientPickerVisible = false;
+            _isSavingSeries = false;
             StatusText = "Save to patient cancelled.";
         }
 
