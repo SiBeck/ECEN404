@@ -1,0 +1,6 @@
+id,requirement,expected,observed,status
+REQ-1,>=24 nominal scenarios must end in PASS or PASS*,>=24 PASS/PASS*,24 PASS/PASS*,True
+REQ-2,All missing-cardio scenarios must raise EXPECTED FAIL,missing_cardio -> EXPECTED FAIL,"EXPECTED FAIL, EXPECTED FAIL, EXPECTED FAIL",True
+REQ-3,All corrupt-DICOM scenarios must raise EXPECTED FAIL,corrupt_dicom -> EXPECTED FAIL,"EXPECTED FAIL, EXPECTED FAIL, EXPECTED FAIL",True
+REQ-4,PASS/PASS* runs must return >=4 frames on average,Average accepted >= 4,4.88 avg frames,True
+REQ-5,Every PASS/PASS* run must include at least 2 accepted frames,Min accepted >= 2,min=2,True

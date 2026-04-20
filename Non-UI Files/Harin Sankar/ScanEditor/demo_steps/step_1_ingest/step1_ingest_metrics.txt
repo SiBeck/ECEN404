@@ -1,0 +1,7 @@
+Cardio samples: 3080
+Signal range: -0.20 to 2.65
+Capture duration (s): 15.4
+Sample period (ms): 5.00
+Frames detected: 12
+Mean frame spacing (ms): 200.00
+Pixel resolution: 32x32

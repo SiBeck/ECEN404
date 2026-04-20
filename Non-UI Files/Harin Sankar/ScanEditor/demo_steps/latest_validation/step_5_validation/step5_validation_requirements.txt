@@ -1,0 +1,6 @@
+Validation Requirements
+[REQ-1] >=24 nominal/outlier scenarios must end in PASS or PASS* -> PASS (100 PASS/PASS*)
+[REQ-2] All missing-cardio scenarios must raise EXPECTED FAIL -> PASS (EXPECTED FAIL, EXPECTED FAIL, EXPECTED FAIL)
+[REQ-3] All corrupt-DICOM scenarios must raise EXPECTED FAIL -> PASS (EXPECTED FAIL, EXPECTED FAIL, EXPECTED FAIL)
+[REQ-4] PASS/PASS* runs must return >=4 frames on average -> PASS (6.32 avg frames)
+[REQ-5] Every PASS/PASS* run must include at least 2 accepted frames -> PASS (min=2)

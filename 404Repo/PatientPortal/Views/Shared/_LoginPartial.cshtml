@@ -1,0 +1,29 @@
+<ul class="navbar-nav">
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-light" href="#" role="button" data-bs-toggle="dropdown">
+                @User.Identity.Name
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">Change Password</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="dropdown-item">Logout</button>
+                    </form>
+                </li>
+            </ul>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link text-light" asp-controller="Account" asp-action="Register">Register</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-light" asp-controller="Account" asp-action="Login">Login</a>
+        </li>
+    }
+</ul>

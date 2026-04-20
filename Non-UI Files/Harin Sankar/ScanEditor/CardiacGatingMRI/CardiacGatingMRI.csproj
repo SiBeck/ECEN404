@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>CardiacGatingMRI</RootNamespace>
+    <AssemblyName>CardiacGatingMRI</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- fo-dicom: DICOM write support -->
+    <PackageReference Include="fo-dicom" Version="5.1.2" />
+    <!-- YamlDotNet: config loading -->
+    <PackageReference Include="YamlDotNet" Version="15.1.2" />
+    <!-- SixLabors.ImageSharp: PNG save without GDI+ dependency -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+alignment:
+  max_offset_ms: 2500.0
+cycle_detection:
+  window_ms: 900.0
+  min_peak_prominence: 0.5
+  stable_rr_variation_pct: 7.5
+  min_rr_ms: 400.0
+  max_rr_ms: 1800.0
+filtering:
+  stable_phase_fraction: 0.35
+  stable_phase_offset: 0.25
+  fallback_min_frames: 2
+io:
+  default_output_dir: output/gated_dicom
+  mrd_frame_period_ms: 40.0
+  mrd_start_time_ms: 0.0
+  mrd_apply_hamming_window: false
+  mrd_zero_pad_fe:
+  mrd_zero_pad_pe:

@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "dgSpecHash": "B+yQkub/ZmM=",
+  "success": false,
+  "projectFilePath": "C:\\Users\\harin\\OneDrive\\Desktop\\ScanEditor\\CardiacGatingCS\\CardiacGating.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\harin\\.nuget\\packages\\mathnet.numerics\\5.0.0\\mathnet.numerics.5.0.0.nupkg.sha512",
+    "C:\\Users\\harin\\.nuget\\packages\\yamldotnet\\13.7.1\\yamldotnet.13.7.1.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1101",
+      "level": "Error",
+      "message": "Unable to find package FellowOakDicom. No packages exist with this id in source(s): nuget.org",
+      "libraryId": "FellowOakDicom",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
+}

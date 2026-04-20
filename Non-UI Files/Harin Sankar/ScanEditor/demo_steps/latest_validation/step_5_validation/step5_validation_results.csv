@@ -1,0 +1,107 @@
+scenario,mode,status,details,accepted_frames
+case_01,outlier,PASS*,Handled outlier cadence,5
+case_02,normal,PASS,Nominal run,8
+case_03,normal,PASS,Nominal run,11
+case_04,outlier,PASS*,Handled outlier cadence,11
+case_05,normal,PASS,Nominal run,2
+case_06,normal,PASS,Nominal run,7
+case_07,outlier,PASS*,Handled outlier cadence,11
+case_08,normal,PASS,Nominal run,2
+case_09,normal,PASS,Nominal run,2
+case_10,normal,PASS,Nominal run,10
+case_11,normal,PASS,Nominal run,10
+case_12,outlier,PASS*,Handled outlier cadence,8
+case_13,normal,PASS,Nominal run,3
+case_14,normal,PASS,Nominal run,10
+case_15,normal,PASS,Nominal run,12
+case_16,normal,PASS,Nominal run,12
+case_17,outlier,PASS*,Handled outlier cadence,8
+case_18,normal,PASS,Nominal run,2
+case_19,normal,PASS,Nominal run,2
+case_20,outlier,PASS*,Handled outlier cadence,6
+case_21,normal,PASS,Nominal run,3
+case_22,normal,PASS,Nominal run,2
+case_23,outlier,PASS*,Handled outlier cadence,10
+case_24,normal,PASS,Nominal run,12
+case_25,outlier,PASS*,Handled outlier cadence,4
+case_26,normal,PASS,Nominal run,11
+case_27,normal,PASS,Nominal run,6
+case_28,normal,PASS,Nominal run,7
+case_29,normal,PASS,Nominal run,9
+case_30,outlier,PASS*,Handled outlier cadence,11
+case_31,normal,PASS,Nominal run,2
+case_32,normal,PASS,Nominal run,2
+case_33,outlier,PASS*,Handled outlier cadence,5
+case_34,outlier,PASS*,Handled outlier cadence,8
+case_35,normal,PASS,Nominal run,2
+case_36,normal,PASS,Nominal run,9
+case_37,normal,PASS,Nominal run,8
+case_38,outlier,PASS*,Handled outlier cadence,9
+case_39,normal,PASS,Nominal run,2
+case_40,normal,PASS,Nominal run,13
+case_41,normal,PASS,Nominal run,8
+case_42,normal,PASS,Nominal run,6
+case_43,outlier,PASS*,Handled outlier cadence,12
+case_44,normal,PASS,Nominal run,3
+case_45,outlier,PASS*,Handled outlier cadence,7
+case_46,outlier,PASS*,Handled outlier cadence,5
+case_47,normal,PASS,Nominal run,2
+case_48,normal,PASS,Nominal run,2
+case_49,normal,PASS,Nominal run,9
+case_50,normal,PASS,Nominal run,3
+case_51,outlier,PASS*,Handled outlier cadence,5
+case_52,normal,PASS,Nominal run,2
+case_53,normal,PASS,Nominal run,6
+case_54,normal,PASS,Nominal run,6
+case_55,normal,PASS,Nominal run,6
+case_56,outlier,PASS*,Handled outlier cadence,9
+case_57,normal,PASS,Nominal run,2
+case_58,normal,PASS,Nominal run,2
+case_59,outlier,PASS*,Handled outlier cadence,7
+case_60,normal,PASS,Nominal run,4
+case_61,normal,PASS,Nominal run,2
+case_62,normal,PASS,Nominal run,10
+case_63,normal,PASS,Nominal run,9
+case_64,outlier,PASS*,Handled outlier cadence,4
+case_65,normal,PASS,Nominal run,6
+case_66,normal,PASS,Nominal run,8
+case_67,outlier,PASS*,Handled outlier cadence,12
+case_68,normal,PASS,Nominal run,10
+case_69,outlier,PASS*,Handled outlier cadence,8
+case_70,normal,PASS,Nominal run,5
+case_71,normal,PASS,Nominal run,7
+case_72,outlier,PASS*,Handled outlier cadence,10
+case_73,normal,PASS,Nominal run,3
+case_74,normal,PASS,Nominal run,2
+case_75,normal,PASS,Nominal run,12
+case_76,normal,PASS,Nominal run,6
+case_77,outlier,PASS*,Handled outlier cadence,2
+case_78,outlier,PASS*,Handled outlier cadence,5
+case_79,normal,PASS,Nominal run,6
+case_80,normal,PASS,Nominal run,9
+case_81,normal,PASS,Nominal run,10
+case_82,outlier,PASS*,Handled outlier cadence,8
+case_83,normal,PASS,Nominal run,2
+case_84,normal,PASS,Nominal run,2
+case_85,outlier,PASS*,Handled outlier cadence,11
+case_86,normal,PASS,Nominal run,4
+case_87,normal,PASS,Nominal run,2
+case_88,normal,PASS,Nominal run,12
+case_89,outlier,PASS*,Handled outlier cadence,9
+case_90,outlier,PASS*,Handled outlier cadence,2
+case_91,normal,PASS,Nominal run,2
+case_92,normal,PASS,Nominal run,6
+case_93,normal,PASS,Nominal run,8
+case_94,normal,PASS,Nominal run,10
+case_95,outlier,PASS*,Handled outlier cadence,9
+case_96,normal,PASS,Nominal run,2
+case_97,normal,PASS,Nominal run,5
+case_98,outlier,PASS*,Handled outlier cadence,4
+case_99,normal,PASS,Nominal run,2
+case_100,outlier,PASS*,Handled outlier cadence,3
+case_missing_01,missing_cardio,EXPECTED FAIL,[Errno 2] No such file or directory: 'demo_steps\\latest_validation\\step_5_validation\\case_missing_01\\cardiogram.csv',0
+case_missing_02,missing_cardio,EXPECTED FAIL,[Errno 2] No such file or directory: 'demo_steps\\latest_validation\\step_5_validation\\case_missing_02\\cardiogram.csv',0
+case_missing_03,missing_cardio,EXPECTED FAIL,[Errno 2] No such file or directory: 'demo_steps\\latest_validation\\step_5_validation\\case_missing_03\\cardiogram.csv',0
+case_corrupt_01,corrupt_dicom,EXPECTED FAIL,File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header. Use force=True to force reading.,0
+case_corrupt_02,corrupt_dicom,EXPECTED FAIL,File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header. Use force=True to force reading.,0
+case_corrupt_03,corrupt_dicom,EXPECTED FAIL,File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header. Use force=True to force reading.,0

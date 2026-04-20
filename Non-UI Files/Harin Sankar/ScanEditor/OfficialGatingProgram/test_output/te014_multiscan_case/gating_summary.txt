@@ -1,0 +1,65 @@
+Object Motion Gating Summary
+============================
+Scan count       : 8
+Motion CSV       : C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\motion_displacement.csv
+Line-times mode  : per-scan csv
+Velocity thresh  : 0.035000 displacement-units/ms
+Still segments   : 41
+Base scan index  : 0
+Accepted lines   : 128
+Replaced lines   : 36
+Unfixable lines  : 0
+Acceptance rate  : 100.0%
+
+Scan inputs:
+  0. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_00.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_00_linetimes.csv
+  1. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_01.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_01_linetimes.csv
+  2. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_02.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_02_linetimes.csv
+  3. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_03.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_03_linetimes.csv
+  4. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_04.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_04_linetimes.csv
+  5. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_05.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_05_linetimes.csv
+  6. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_06.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_06_linetimes.csv
+  7. C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_07.mrd | line times: C:\Users\harin\OneDrive\Desktop\ScanEditor\ObjectMotionGating\test_data\te014_multiscan_case\scan_07_linetimes.csv
+
+Detected still segments:
+  1. 0.0 ms -> 172.0 ms (172.0 ms)
+  2. 248.0 ms -> 332.0 ms (84.0 ms)
+  3. 408.0 ms -> 592.0 ms (184.0 ms)
+  4. 668.0 ms -> 752.0 ms (84.0 ms)
+  5. 828.0 ms -> 1132.0 ms (304.0 ms)
+  6. 1208.0 ms -> 1292.0 ms (84.0 ms)
+  7. 1368.0 ms -> 1552.0 ms (184.0 ms)
+  8. 1628.0 ms -> 1712.0 ms (84.0 ms)
+  9. 1788.0 ms -> 2092.0 ms (304.0 ms)
+  10. 2168.0 ms -> 2252.0 ms (84.0 ms)
+  11. 2328.0 ms -> 2512.0 ms (184.0 ms)
+  12. 2588.0 ms -> 2672.0 ms (84.0 ms)
+  13. 2748.0 ms -> 3052.0 ms (304.0 ms)
+  14. 3128.0 ms -> 3212.0 ms (84.0 ms)
+  15. 3288.0 ms -> 3472.0 ms (184.0 ms)
+  16. 3548.0 ms -> 3632.0 ms (84.0 ms)
+  17. 3708.0 ms -> 4012.0 ms (304.0 ms)
+  18. 4088.0 ms -> 4172.0 ms (84.0 ms)
+  19. 4248.0 ms -> 4432.0 ms (184.0 ms)
+  20. 4508.0 ms -> 4592.0 ms (84.0 ms)
+  21. 4668.0 ms -> 4972.0 ms (304.0 ms)
+  22. 5048.0 ms -> 5132.0 ms (84.0 ms)
+  23. 5208.0 ms -> 5392.0 ms (184.0 ms)
+  24. 5468.0 ms -> 5552.0 ms (84.0 ms)
+  25. 5628.0 ms -> 5932.0 ms (304.0 ms)
+  26. 6008.0 ms -> 6092.0 ms (84.0 ms)
+  27. 6168.0 ms -> 6352.0 ms (184.0 ms)
+  28. 6428.0 ms -> 6512.0 ms (84.0 ms)
+  29. 6588.0 ms -> 6892.0 ms (304.0 ms)
+  30. 6968.0 ms -> 7052.0 ms (84.0 ms)
+  31. 7128.0 ms -> 7312.0 ms (184.0 ms)
+  32. 7388.0 ms -> 7472.0 ms (84.0 ms)
+  33. 7548.0 ms -> 7852.0 ms (304.0 ms)
+  34. 7928.0 ms -> 8012.0 ms (84.0 ms)
+  35. 8088.0 ms -> 8272.0 ms (184.0 ms)
+  36. 8348.0 ms -> 8432.0 ms (84.0 ms)
+  37. 8508.0 ms -> 8812.0 ms (304.0 ms)
+  38. 8888.0 ms -> 8972.0 ms (84.0 ms)
+  39. 9048.0 ms -> 9232.0 ms (184.0 ms)
+  40. 9308.0 ms -> 9392.0 ms (84.0 ms)
+  41. 9468.0 ms -> 9632.0 ms (164.0 ms)

@@ -1,0 +1,8 @@
+Global offset (ms): 101.73
+Residual mean before: -107.45
+Residual mean after: -5.72
+Residual std before: 17.15
+Residual std after: 17.15
+Max |residual| after: 32.37 ms
+Frames evaluated: 12
+Residuals measured vs original trigger plan

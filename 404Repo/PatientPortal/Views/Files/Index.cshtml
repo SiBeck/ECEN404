@@ -1,0 +1,177 @@
+@model List<PatientFile>
+@{
+    ViewData["Title"] = "My Medical Files";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-folder-open"></i> My Medical Files</h2>
+    <div>
+        <span class="badge bg-primary fs-6">@Model.Count File@(Model.Count != 1 ? "s" : "")</span>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body text-center p-5">
+                    <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+                    <h4>No Files Found</h4>
+                    <p class="text-muted">You don't have any medical files uploaded yet.</p>
+                    <p>Files uploaded by your healthcare provider will appear here.</p>
+                    <a asp-controller="Home" asp-action="Dashboard" class="btn btn-primary mt-3">
+                        <i class="bi bi-house"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="bi bi-file-earmark-medical text-primary display-4"></i>
+                                <h6 class="mt-2">Total Files</h6>
+                                <h4 class="text-primary">@Model.Count</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="bi bi-file-earmark-pdf text-danger display-4"></i>
+                                <h6 class="mt-2">PDF Files</h6>
+                                <h4 class="text-danger">@Model.Count(f => f.IsPdf)</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="bi bi-file-earmark-image text-success display-4"></i>
+                                <h6 class="mt-2">Images</h6>
+                                <h4 class="text-success">@Model.Count(f => f.IsImage)</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="bi bi-file-earmark-binary text-info display-4"></i>
+                                <h6 class="mt-2">DICOM</h6>
+                                <h4 class="text-info">@Model.Count(f => f.IsDicom)</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th><i class="bi bi-file-earmark"></i> File Name</th>
+                            <th><i class="bi bi-tags"></i> Type</th>
+                            <th><i class="bi bi-folder"></i> Category</th>
+                            <th><i class="bi bi-arrows-angle-expand"></i> Size</th>
+                            <th><i class="bi bi-calendar"></i> Uploaded</th>
+                            <th><i class="bi bi-person"></i> Uploaded By</th>
+                            <th class="text-center"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var file in Model)
+                        {
+                            <tr>
+                                <td>
+                                    @if (file.IsPdf)
+                                    {
+                                        <i class="bi bi-file-earmark-pdf text-danger fs-4"></i>
+                                    }
+                                    else if (file.IsImage)
+                                    {
+                                        <i class="bi bi-file-earmark-image text-success fs-4"></i>
+                                    }
+                                    else if (file.IsDicom)
+                                    {
+                                        <i class="bi bi-file-earmark-medical text-primary fs-4"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-file-earmark text-secondary fs-4"></i>
+                                    }
+                                    <span class="ms-2">@file.FileName</span>
+                                    @if (!string.IsNullOrEmpty(file.Description))
+                                    {
+                                        <br>
+                                        <small class="text-muted ms-5">@file.Description</small>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">@file.FileType</span>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(file.Category))
+                                    {
+                                        <span class="badge bg-info">@file.Category</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>@file.FileSizeFormatted</td>
+                                <td>
+                                    <small>
+                                        @file.UploadedAt.ToString("MMM dd, yyyy")<br>
+                                        <span class="text-muted">@file.UploadedAt.ToString("h:mm tt")</span>
+                                    </small>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(file.UploadedBy))
+                                    {
+                                        <small>@file.UploadedBy</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">System</small>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a asp-action="Download" asp-route-id="@file.Id" 
+                                           class="btn btn-primary" 
+                                           title="Download">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        @if (file.IsPdf || file.IsImage)
+                                        {
+                                            <a asp-action="View" asp-route-id="@file.Id" 
+                                               class="btn btn-info" 
+                                               title="View">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle-fill"></i>
+            <strong>Note:</strong> Click the <i class="bi bi-download"></i> button to download files. 
+            PDF and image files can be viewed online using the <i class="bi bi-eye"></i> button.
+        </div>
+    </div>
+}

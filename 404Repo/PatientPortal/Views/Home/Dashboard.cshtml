@@ -1,0 +1,72 @@
+@using System.Security.Claims
+@{
+    ViewData["Title"] = "Dashboard";
+    var patientName = User.Identity?.Name ?? "Patient";
+    var patientId = User.FindFirst("PatientId")?.Value ?? "";
+}
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2>Welcome back, @patientName!</h2>
+        <p class="lead text-muted">Patient ID: @patientId</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="bi bi-file-earmark-medical display-3 text-primary mb-3"></i>
+                <h5 class="card-title">My Medical Files</h5>
+                <p class="card-text text-muted">View and download all your medical records, images, and reports</p>
+                <a asp-controller="Files" asp-action="Index" class="btn btn-primary mt-3">
+                    <i class="bi bi-folder-open"></i> View Files
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="bi bi-person-circle display-3 text-success mb-3"></i>
+                <h5 class="card-title">Account Settings</h5>
+                <p class="card-text text-muted">Update your password and manage your account preferences</p>
+                <a asp-controller="Account" asp-action="ChangePassword" class="btn btn-success mt-3">
+                    <i class="bi bi-key"></i> Change Password
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="bi bi-shield-check display-3 text-info mb-3"></i>
+                <h5 class="card-title">Privacy & Security</h5>
+                <p class="card-text text-muted">Learn how we protect your medical information</p>
+                <a asp-controller="Home" asp-action="Privacy" class="btn btn-info mt-3">
+                    <i class="bi bi-info-circle"></i> Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-info-circle-fill text-primary"></i> Quick Tips
+                </h5>
+                <ul class="mb-0">
+                    <li>All your medical files are encrypted and stored securely</li>
+                    <li>You can download files to save offline copies</li>
+                    <li>Contact your healthcare provider if you have questions about your files</li>
+                    <li>Always log out when using a shared computer</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

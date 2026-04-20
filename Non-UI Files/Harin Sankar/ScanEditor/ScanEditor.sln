@@ -1,0 +1,41 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CardiacGatingCS", "CardiacGatingCS", "{5F7BCDAA-4EE7-48BB-3224-0C6F6096F3A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardiacGatingMRI", "CardiacGatingMRI\CardiacGatingMRI.csproj", "{E83D8EC3-5256-D7DB-F4F8-EC7CA91118E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficialGatingProgram", "OfficialGatingProgram\OfficialGatingProgram.csproj", "{D355130C-0F2A-34D3-BA3A-91B9A70D24A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardiacGating", "CardiacGatingCS\CardiacGating.csproj", "{186252A6-5953-4E1F-4F50-B44AF1FF31CE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E83D8EC3-5256-D7DB-F4F8-EC7CA91118E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E83D8EC3-5256-D7DB-F4F8-EC7CA91118E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E83D8EC3-5256-D7DB-F4F8-EC7CA91118E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E83D8EC3-5256-D7DB-F4F8-EC7CA91118E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D355130C-0F2A-34D3-BA3A-91B9A70D24A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D355130C-0F2A-34D3-BA3A-91B9A70D24A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D355130C-0F2A-34D3-BA3A-91B9A70D24A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D355130C-0F2A-34D3-BA3A-91B9A70D24A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{186252A6-5953-4E1F-4F50-B44AF1FF31CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{186252A6-5953-4E1F-4F50-B44AF1FF31CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{186252A6-5953-4E1F-4F50-B44AF1FF31CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{186252A6-5953-4E1F-4F50-B44AF1FF31CE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{186252A6-5953-4E1F-4F50-B44AF1FF31CE} = {5F7BCDAA-4EE7-48BB-3224-0C6F6096F3A8}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DB8F1CC9-9AE7-41A8-8516-5CBCDCD783F5}
+	EndGlobalSection
+EndGlobal

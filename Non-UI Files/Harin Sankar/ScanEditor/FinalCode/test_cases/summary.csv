@@ -1,0 +1,6 @@
+"case_name","ok","frame_count","accepted_frames","rejected_frames","stable_cycles","output_dicom_count","mrd_file","cardio_file","error"
+"case_01","1","24","10","14","4","10","data\test_cases\case_01\te014_case_01.mrd","data\test_cases\case_01\cardiogram.csv",""
+"case_02","1","16","8","8","5","8","data\test_cases\case_02\te014_case_02.mrd","data\test_cases\case_02\cardiogram.csv",""
+"case_03","1","54","18","36","8","18","data\test_cases\case_03\te014_case_03.mrd","data\test_cases\case_03\cardiogram.csv",""
+"case_04","1","34","20","14","6","20","data\test_cases\case_04\te014_case_04.mrd","data\test_cases\case_04\cardiogram.csv",""
+"case_05","1","16","7","9","11","7","data\test_cases\case_05\te014_case_05.mrd","data\test_cases\case_05\cardiogram.csv",""

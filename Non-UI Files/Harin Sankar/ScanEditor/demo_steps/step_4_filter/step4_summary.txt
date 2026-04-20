@@ -1,0 +1,3 @@
+Accepted frames: 6
+Rejected frames: 6
+Stable cycles: 17

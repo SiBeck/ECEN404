@@ -1,0 +1,31 @@
+scenario,mode,status,details
+case_01,outlier,PASS*,Handled outlier cadence
+case_02,normal,PASS,Nominal run
+case_03,normal,PASS,Nominal run
+case_04,normal,PASS,Nominal run
+case_05,outlier,PASS*,Handled outlier cadence
+case_06,normal,PASS,Nominal run
+case_07,normal,PASS,Nominal run
+case_08,normal,PASS,Nominal run
+case_09,outlier,PASS*,Handled outlier cadence
+case_10,normal,PASS,Nominal run
+case_11,normal,PASS,Nominal run
+case_12,normal,PASS,Nominal run
+case_13,outlier,PASS*,Handled outlier cadence
+case_14,normal,PASS,Nominal run
+case_15,normal,PASS,Nominal run
+case_16,normal,PASS,Nominal run
+case_17,outlier,PASS*,Handled outlier cadence
+case_18,normal,PASS,Nominal run
+case_19,normal,PASS,Nominal run
+case_20,normal,PASS,Nominal run
+case_21,outlier,PASS*,Handled outlier cadence
+case_22,normal,PASS,Nominal run
+case_23,normal,PASS,Nominal run
+case_24,normal,PASS,Nominal run
+case_missing_01,missing_cardio,EXPECTED FAIL,[Errno 2] No such file or directory: 'demo_steps\\step_5_validation\\case_missing_01\\cardiogram.csv'
+case_missing_02,missing_cardio,EXPECTED FAIL,[Errno 2] No such file or directory: 'demo_steps\\step_5_validation\\case_missing_02\\cardiogram.csv'
+case_missing_03,missing_cardio,EXPECTED FAIL,[Errno 2] No such file or directory: 'demo_steps\\step_5_validation\\case_missing_03\\cardiogram.csv'
+case_corrupt_01,corrupt_dicom,EXPECTED FAIL,File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header. Use force=True to force reading.
+case_corrupt_02,corrupt_dicom,EXPECTED FAIL,File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header. Use force=True to force reading.
+case_corrupt_03,corrupt_dicom,EXPECTED FAIL,File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header. Use force=True to force reading.

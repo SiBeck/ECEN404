@@ -1,0 +1,5 @@
+Total cycles: 18
+Stable cycles: 17
+Stable ratio: 94.4%
+Mean cycle duration: 1329.7 ms
+Std cycle duration: 81.0 ms

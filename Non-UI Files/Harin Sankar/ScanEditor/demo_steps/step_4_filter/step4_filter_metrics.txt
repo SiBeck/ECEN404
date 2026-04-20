@@ -1,0 +1,5 @@
+Alignment offset: 0.00 ms
+Stable cycles: 17
+Acceptance rate: 50.0%
+Accepted per stable cycle: 0.35
+Output folder: demo_steps\step_4_filter\filtered_frames
