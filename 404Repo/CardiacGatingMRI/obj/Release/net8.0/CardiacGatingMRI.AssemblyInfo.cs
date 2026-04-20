@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CardiacGatingMRI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+85a502feab28eca9934d3ac8bd6ac82f9422457a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0f33fd2f04bed3f7c78ce88bdea4d5dab94af3f5")]
 [assembly: System.Reflection.AssemblyProductAttribute("CardiacGatingMRI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CardiacGatingMRI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -1,0 +1,15 @@
+﻿Part D (
+using Microsoft.EntityFrameworkCore;
+using MedicalImagingAPI.Database;
+
+// Add DbContext
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+)
+
+Part E(
+Add-Migration InitialCreate
+Update-Database
+)
+
+Are failing
