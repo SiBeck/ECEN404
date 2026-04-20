@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using _403DesktopApp.Models;
 
 namespace _403DesktopApp.Services
@@ -14,76 +15,109 @@ namespace _403DesktopApp.Services
         /// </summary>
         public static MedicalProvider? CurrentProvider { get; set; }
 
-        private readonly List<MedicalProvider> _providers;
+        /// <summary>
+        /// Shared API client — callers (e.g. PatientService) attach the JWT
+        /// to their requests via this instance.
+        /// </summary>
+        public static BioMetrixApiService Api { get; } = new BioMetrixApiService();
+
         private readonly PasswordHasher _passwordHasher;
 
         public AuthenticationService()
         {
             _passwordHasher = new PasswordHasher();
-
-            // Demo providers with hashed passwords
-            // In production, load from database
-            _providers = new List<MedicalProvider>
-            {
-                new MedicalProvider
-                {
-                    ProviderId = "MD001",
-                    FirstName = "John",
-                    LastName = "Smith",
-                    Specialty = "Cardiology",
-                    Email = "john.smith@demo.org",
-                    // Password is "demo123" - hashed with PBKDF2
-                    PasswordHash = _passwordHasher.HashPassword("demo123"),
-                    IsActive = true
-                },
-                new MedicalProvider
-                {
-                    ProviderId = "MD002",
-                    FirstName = "Sarah",
-                    LastName = "Johnson",
-                    Specialty = "Pediatrics",
-                    Email = "sarah.johnson@demo.org",
-                    // Password is "demo456"
-                    PasswordHash = _passwordHasher.HashPassword("demo456"),
-                    IsActive = true
-                },
-                new MedicalProvider
-                {
-                    ProviderId = "NP001",
-                    FirstName = "Emily",
-                    LastName = "Davis",
-                    Specialty = "Family Medicine",
-                    Email = "emily.davis@demo.org",
-                    // Password is "demo789"
-                    PasswordHash = _passwordHasher.HashPassword("demo789"),
-                    IsActive = true
-                }
-            };
         }
 
-        public bool AuthenticateProvider(string providerId, string password)
+        /// <summary>
+        /// Authenticates a provider via the BioMetrixDatabase API.
+        /// Falls back to offline local-credential check if the API is unreachable,
+        /// so the app remains usable without network access during testing.
+        /// Returns true and populates <see cref="CurrentProvider"/> on success.
+        /// </summary>
+        public async Task<bool> AuthenticateProviderAsync(string providerId, string password)
         {
-            var provider = _providers.FirstOrDefault(p =>
-                p.ProviderId.Equals(providerId, System.StringComparison.OrdinalIgnoreCase)
+            // ── 1. Try the live API ───────────────────────────────────────────
+            try
+            {
+                var auth = await Api.LoginAsync(providerId, password);
+                if (auth != null)
+                {
+                    CurrentProvider = new MedicalProvider
+                    {
+                        ProviderId = auth.User.ProviderId,
+                        FirstName = auth.User.Name.Split(' ').FirstOrDefault() ?? "",
+                        LastName = auth.User.Name.Contains(' ')
+                            ? auth.User.Name[(auth.User.Name.IndexOf(' ') + 1)..]
+                            : "",
+                        Email = "",
+                        Specialty = auth.User.Role,
+                        IsActive = true
+                    };
+                    return true;
+                }
+                // API reachable but credentials rejected — no fallback.
+                return false;
+            }
+            catch (HttpRequestException)
+            {
+                // API unreachable — fall through to offline check.
+            }
+            catch (TaskCanceledException)
+            {
+                // Timeout — fall through to offline check.
+            }
+
+            // ── 2. Offline fallback (demo credentials only) ───────────────────
+            return AuthenticateProviderOffline(providerId, password);
+        }
+
+        /// <summary>
+        /// Synchronous wrapper kept for UI code that cannot await.
+        /// Prefer <see cref="AuthenticateProviderAsync"/> when possible.
+        /// </summary>
+        public bool AuthenticateProvider(string providerId, string password)
+            => AuthenticateProviderOffline(providerId, password);
+
+        private bool AuthenticateProviderOffline(string providerId, string password)
+        {
+            // Offline demo accounts — replace with a persistent local store for production.
+            var offlineAccounts = GetOfflineDemoAccounts();
+            var entry = offlineAccounts.FirstOrDefault(p =>
+                p.ProviderId.Equals(providerId, StringComparison.OrdinalIgnoreCase)
                 && p.IsActive);
 
-            if (provider == null)
+            if (entry == null) return false;
+
+            if (!_passwordHasher.VerifyPassword(password, entry.PasswordHash))
                 return false;
 
-            // Verify password using secure hash comparison
-            return _passwordHasher.VerifyPassword(password, provider.PasswordHash);
+            CurrentProvider = entry;
+            return true;
         }
 
-        public MedicalProvider GetProvider(string providerId)
-        {
-            return _providers.FirstOrDefault(p =>
-                p.ProviderId.Equals(providerId, System.StringComparison.OrdinalIgnoreCase));
-        }
+        public MedicalProvider? GetProvider(string providerId)
+            => GetOfflineDemoAccounts().FirstOrDefault(p =>
+                p.ProviderId.Equals(providerId, StringComparison.OrdinalIgnoreCase));
 
-        // Method to hash a new password (for creating new providers)
         public string HashNewPassword(string password)
+            => _passwordHasher.HashPassword(password);
+
+        // Offline demo accounts are intentionally limited and clearly marked.
+        // Production deployments must provision users through BioMetrixDatabase.
+        private List<MedicalProvider> GetOfflineDemoAccounts()
         {
-            return _passwordHasher.HashPassword(password);
+            return new List<MedicalProvider>
+            {
+                new() { ProviderId = "MD001", FirstName = "John",  LastName = "Smith",
+                    Specialty = "Cardiology",     Email = "john.smith@demo.org",
+                    PasswordHash = _passwordHasher.HashPassword("demo123"), IsActive = true },
+                new() { ProviderId = "MD002", FirstName = "Sarah", LastName = "Johnson",
+                    Specialty = "Pediatrics",     Email = "sarah.johnson@demo.org",
+                    PasswordHash = _passwordHasher.HashPassword("demo456"), IsActive = true },
+                new() { ProviderId = "NP001", FirstName = "Emily", LastName = "Davis",
+                    Specialty = "Family Medicine", Email = "emily.davis@demo.org",
+                    PasswordHash = _passwordHasher.HashPassword("demo789"), IsActive = true }
+            };
         }
     }
 
