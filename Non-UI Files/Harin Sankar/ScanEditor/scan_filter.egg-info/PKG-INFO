@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: scan-filter
+Version: 0.1.0
+Summary: Cardiac-aware DICOM filtering pipeline
+Author: Scan Filter Authors
+Requires-Python: >=3.10
+Requires-Dist: numpy>=1.25
+Requires-Dist: pandas>=2.1
+Requires-Dist: pydicom>=2.4
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: matplotlib>=3.8
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4; extra == "dev"

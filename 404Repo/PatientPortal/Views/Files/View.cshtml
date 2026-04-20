@@ -1,0 +1,169 @@
+@model PatientFile
+@{
+    ViewData["Title"] = "View File";
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Dashboard">Dashboard</a></li>
+            <li class="breadcrumb-item"><a asp-action="Index">My Files</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.FileName</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    @if (Model.IsPdf)
+                    {
+                        <i class="bi bi-file-earmark-pdf"></i>
+                    }
+                    else if (Model.IsImage)
+                    {
+                        <i class="bi bi-file-earmark-image"></i>
+                    }
+                    else if (Model.IsDicom)
+                    {
+                        <i class="bi bi-file-earmark-medical"></i>
+                    }
+                    else
+                    {
+                        <i class="bi bi-file-earmark"></i>
+                    }
+                    @Model.FileName
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (Model.IsPdf)
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> PDF viewer - Download the file to view in your PDF reader
+                    </div>
+                    <div class="text-center p-5">
+                        <i class="bi bi-file-earmark-pdf display-1 text-danger mb-3"></i>
+                        <h4>PDF Document</h4>
+                        <p class="text-muted">@Model.FileName</p>
+                        <a asp-action="Download" asp-route-id="@Model.Id" class="btn btn-primary btn-lg mt-3">
+                            <i class="bi bi-download"></i> Download PDF
+                        </a>
+                    </div>
+                }
+                else if (Model.IsImage)
+                {
+                    <div class="text-center">
+                        <img src="@Url.Action("Download", new { id = Model.Id })" 
+                             alt="@Model.FileName" 
+                             class="img-fluid rounded shadow-sm" 
+                             style="max-height: 600px;" />
+                    </div>
+                }
+                else if (Model.IsDicom)
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> DICOM files require specialized software to view
+                    </div>
+                    <div class="text-center p-5">
+                        <i class="bi bi-file-earmark-medical display-1 text-primary mb-3"></i>
+                        <h4>DICOM Medical Image</h4>
+                        <p class="text-muted">@Model.FileName</p>
+                        <p>Download this file and open it with DICOM viewing software</p>
+                        <a asp-action="Download" asp-route-id="@Model.Id" class="btn btn-primary btn-lg mt-3">
+                            <i class="bi bi-download"></i> Download DICOM
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center p-5">
+                        <i class="bi bi-file-earmark display-1 text-secondary mb-3"></i>
+                        <h4>File</h4>
+                        <p class="text-muted">@Model.FileName</p>
+                        <a asp-action="Download" asp-route-id="@Model.Id" class="btn btn-primary btn-lg mt-3">
+                            <i class="bi bi-download"></i> Download File
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> File Information</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">File Name:</dt>
+                    <dd class="col-sm-7">@Model.FileName</dd>
+                    
+                    <dt class="col-sm-5">File Type:</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-secondary">@Model.FileType</span>
+                    </dd>
+                    
+                    @if (!string.IsNullOrEmpty(Model.Category))
+                    {
+                        <dt class="col-sm-5">Category:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-info">@Model.Category</span>
+                        </dd>
+                    }
+                    
+                    <dt class="col-sm-5">File Size:</dt>
+                    <dd class="col-sm-7">@Model.FileSizeFormatted</dd>
+                    
+                    <dt class="col-sm-5">Uploaded:</dt>
+                    <dd class="col-sm-7">
+                        @Model.UploadedAt.ToString("MMMM dd, yyyy")<br>
+                        <small class="text-muted">@Model.UploadedAt.ToString("h:mm tt")</small>
+                    </dd>
+                    
+                    @if (!string.IsNullOrEmpty(Model.UploadedBy))
+                    {
+                        <dt class="col-sm-5">Uploaded By:</dt>
+                        <dd class="col-sm-7">@Model.UploadedBy</dd>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <dt class="col-sm-12 mt-2">Description:</dt>
+                        <dd class="col-sm-12">
+                            <p class="text-muted mb-0">@Model.Description</p>
+                        </dd>
+                    }
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-gear"></i> Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a asp-action="Download" asp-route-id="@Model.Id" class="btn btn-primary">
+                        <i class="bi bi-download"></i> Download File
+                    </a>
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Files
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Privacy Notice:</strong> These are your private medical records. 
+            Do not share or forward these files to unauthorized individuals.
+        </div>
+    </div>
+</div>
