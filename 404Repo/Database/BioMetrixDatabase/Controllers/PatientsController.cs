@@ -93,5 +93,20 @@ namespace BioMetrixDatabase.Controllers
         /// <summary>Simple health check to confirm the API and database are reachable.</summary>
         [HttpGet("health")]
         public IActionResult Health() => Ok(new { status = "ok", timestamp = DateTime.UtcNow });
+
+        /// <summary>Returns aggregate counts for the web portal dashboard.</summary>
+        [HttpGet("stats")]
+        public async Task<IActionResult> GetStats()
+        {
+            return Ok(new
+            {
+                TotalPatients    = await _db.Patients.CountAsync(),
+                TotalImages      = await _db.PatientImages.CountAsync(),
+                ScanFilterImages = await _db.PatientImages.CountAsync(i => i.SourceType == "Scan Filter"),
+                GatedImages      = await _db.PatientImages.CountAsync(i => i.SourceType == "Cardiac Gating"),
+                ManualImages     = await _db.PatientImages.CountAsync(i => i.SourceType == "Manual Import"),
+                LastSync         = await _db.Patients.MaxAsync(p => (DateTime?)p.LastModifiedDate)
+            });
+        }
     }
 }

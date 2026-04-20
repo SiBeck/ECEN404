@@ -20,11 +20,12 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<BioMetrixDbContext>(options =>
     options.UseSqlite(connectionString));
 
-// Allow desktop app (localhost) to call the API without CORS errors
+// Allow desktop app and web portal (localhost) to call the API without CORS errors
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost", "https://localhost")
+        policy.WithOrigins("http://localhost", "https://localhost",
+                           "http://localhost:5168", "http://localhost:7000")
               .AllowAnyMethod()
               .AllowAnyHeader());
 });
@@ -40,15 +41,14 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "BioMetrix API v1"));
-}
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "BioMetrix API v1"));
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 app.Run();

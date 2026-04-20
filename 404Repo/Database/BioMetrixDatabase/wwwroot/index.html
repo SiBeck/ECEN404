@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BioMetrix Patient Portal</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous" />
+  <style>
+    body { background: #f4f6f9; }
+    .stat-card { border-left: 4px solid; }
+    .stat-card.blue  { border-color: #0d6efd; }
+    .stat-card.green { border-color: #198754; }
+    .stat-card.teal  { border-color: #0dcaf0; }
+    .stat-card.gold  { border-color: #ffc107; }
+    .stat-card.gray  { border-color: #6c757d; }
+    #patient-table tbody tr { cursor: pointer; }
+    #patient-table tbody tr:hover { background: #e8f0fe; }
+    #patient-table tbody tr.selected { background: #cfe2ff; }
+    .source-badge {
+      font-size: .75rem;
+      padding: .2em .55em;
+      border-radius: .25rem;
+      font-weight: 600;
+    }
+    .src-scan   { background: #cfe2ff; color: #084298; }
+    .src-gated  { background: #d1e7dd; color: #0a3622; }
+    .src-manual { background: #fff3cd; color: #664d03; }
+    .detail-panel { min-height: 300px; }
+    #status-bar { font-size: .85rem; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<nav class="navbar navbar-dark bg-primary px-3 py-2 mb-4">
+  <span class="navbar-brand fw-bold fs-5">BioMetrix Patient Portal</span>
+  <div class="d-flex align-items-center gap-3">
+    <span id="status-bar" class="text-white-50"></span>
+    <button class="btn btn-sm btn-outline-light" onclick="refresh()">Refresh</button>
+    <a class="btn btn-sm btn-outline-light" href="/swagger" target="_blank">API Docs</a>
+  </div>
+</nav>
+
+<div class="container-fluid px-4">
+
+  <!-- ── Stats Bar ───────────────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4" id="stats-row">
+    <div class="col-6 col-sm-4 col-lg-2">
+      <div class="card stat-card blue p-3">
+        <div class="text-muted small">Patients</div>
+        <div class="fs-3 fw-bold" id="stat-patients">—</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+      <div class="card stat-card green p-3">
+        <div class="text-muted small">Total Images</div>
+        <div class="fs-3 fw-bold" id="stat-images">—</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+      <div class="card stat-card teal p-3">
+        <div class="text-muted small">Scan Filter</div>
+        <div class="fs-3 fw-bold" id="stat-scan">—</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+      <div class="card stat-card gold p-3">
+        <div class="text-muted small">Cardiac Gated</div>
+        <div class="fs-3 fw-bold" id="stat-gated">—</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+      <div class="card stat-card gray p-3">
+        <div class="text-muted small">Manual Import</div>
+        <div class="fs-3 fw-bold" id="stat-manual">—</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+      <div class="card stat-card gray p-3">
+        <div class="text-muted small">Last Sync</div>
+        <div class="fs-6 fw-semibold" id="stat-sync" style="margin-top:6px">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ── Patient List ─────────────────────────────────────────────────── -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Patients</strong>
+          <input type="text" id="search-input" class="form-control form-control-sm w-50"
+                 placeholder="Search name / MRN…" oninput="filterTable()" />
+        </div>
+        <div class="card-body p-0" style="overflow-y:auto; max-height:520px">
+          <table class="table table-sm table-hover mb-0" id="patient-table">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Name</th>
+                <th>DOB</th>
+                <th>MRN</th>
+                <th class="text-center">Images</th>
+              </tr>
+            </thead>
+            <tbody id="patient-tbody">
+              <tr><td colspan="4" class="text-center text-muted py-4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Patient Detail ───────────────────────────────────────────────── -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm detail-panel">
+        <div class="card-header"><strong id="detail-title">Select a patient</strong></div>
+        <div class="card-body" id="detail-body">
+          <p class="text-muted">Click a row in the patient list to view details.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<script>
+  let allPatients = [];
+
+  // ── Bootstrap ────────────────────────────────────────────────────────────
+  async function refresh() {
+    setStatus('Refreshing…');
+    await Promise.all([loadStats(), loadPatients()]);
+    setStatus('Last refreshed ' + new Date().toLocaleTimeString());
+  }
+
+  window.addEventListener('DOMContentLoaded', refresh);
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  async function loadStats() {
+    try {
+      const r = await fetch('/api/patients/stats');
+      if (!r.ok) return;
+      const d = await r.json();
+      document.getElementById('stat-patients').textContent = d.totalPatients ?? 0;
+      document.getElementById('stat-images').textContent   = d.totalImages   ?? 0;
+      document.getElementById('stat-scan').textContent     = d.scanFilterImages ?? 0;
+      document.getElementById('stat-gated').textContent    = d.gatedImages    ?? 0;
+      document.getElementById('stat-manual').textContent   = d.manualImages   ?? 0;
+      document.getElementById('stat-sync').textContent     = d.lastSync
+        ? new Date(d.lastSync).toLocaleDateString()
+        : 'Never';
+    } catch { /* API not running */ }
+  }
+
+  // ── Patient List ──────────────────────────────────────────────────────────
+  async function loadPatients() {
+    try {
+      const r = await fetch('/api/patients');
+      if (!r.ok) {
+        document.getElementById('patient-tbody').innerHTML =
+          '<tr><td colspan="4" class="text-center text-danger py-4">API unavailable</td></tr>';
+        return;
+      }
+      allPatients = await r.json();
+      renderTable(allPatients);
+    } catch {
+      document.getElementById('patient-tbody').innerHTML =
+        '<tr><td colspan="4" class="text-center text-danger py-4">Could not reach API</td></tr>';
+    }
+  }
+
+  function renderTable(list) {
+    const tbody = document.getElementById('patient-tbody');
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No patients found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(p => `
+      <tr onclick="selectPatient('${escHtml(p.patientId)}')" data-id="${escHtml(p.patientId)}">
+        <td>${escHtml(p.lastName)}, ${escHtml(p.firstName)}</td>
+        <td>${fmtDate(p.dateOfBirth)}</td>
+        <td>${escHtml(p.medicalRecordNumber || '')}</td>
+        <td class="text-center">${(p.images || []).length}</td>
+      </tr>`).join('');
+  }
+
+  function filterTable() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    const filtered = allPatients.filter(p =>
+      (`${p.firstName} ${p.lastName}`).toLowerCase().includes(q) ||
+      (p.medicalRecordNumber || '').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  }
+
+  // ── Patient Detail ────────────────────────────────────────────────────────
+  function selectPatient(id) {
+    // highlight row
+    document.querySelectorAll('#patient-tbody tr').forEach(r => r.classList.remove('selected'));
+    const row = document.querySelector(`#patient-tbody tr[data-id="${id}"]`);
+    if (row) row.classList.add('selected');
+
+    const p = allPatients.find(x => x.patientId === id);
+    if (!p) return;
+
+    document.getElementById('detail-title').textContent = `${p.firstName} ${p.lastName}`;
+
+    const images = p.images || [];
+
+    document.getElementById('detail-body').innerHTML = `
+      <div class="row g-2 mb-3">
+        <div class="col-sm-6"><span class="text-muted small">Date of Birth</span><div>${fmtDate(p.dateOfBirth)}</div></div>
+        <div class="col-sm-6"><span class="text-muted small">Gender</span><div>${escHtml(p.gender || '—')}</div></div>
+        <div class="col-sm-6"><span class="text-muted small">MRN</span><div>${escHtml(p.medicalRecordNumber || '—')}</div></div>
+        <div class="col-sm-6"><span class="text-muted small">Phone</span><div>${escHtml(p.phoneNumber || '—')}</div></div>
+        <div class="col-sm-6"><span class="text-muted small">Email</span><div>${escHtml(p.email || '—')}</div></div>
+        <div class="col-sm-6"><span class="text-muted small">Last Modified</span><div>${fmtDateTime(p.lastModifiedDate)}</div></div>
+        <div class="col-sm-6"><span class="text-muted small">Created By</span><div>${escHtml(p.createdByProviderId || '—')}</div></div>
+        ${p.medicalNotes ? `<div class="col-12"><span class="text-muted small">Notes</span><div>${escHtml(p.medicalNotes)}</div></div>` : ''}
+      </div>
+
+      <div class="fw-semibold mb-2">Images (${images.length})</div>
+      ${images.length === 0
+        ? '<p class="text-muted small">No images saved for this patient.</p>'
+        : `<div style="overflow-x:auto">
+           <table class="table table-sm table-bordered">
+             <thead class="table-light">
+               <tr>
+                 <th>Tag</th><th>Type</th><th>Saved</th><th>By</th><th>Filter Stats</th>
+               </tr>
+             </thead>
+             <tbody>${images.map(renderImageRow).join('')}</tbody>
+           </table></div>`
+      }`;
+  }
+
+  function renderImageRow(img) {
+    const badge = sourceBadge(img.sourceType);
+    let stats = '—';
+    if (img.filterStatsJson) {
+      try {
+        const fs = JSON.parse(img.filterStatsJson);
+        const cleanPct = fs.totalLines > 0
+          ? Math.round(100 * fs.cleanBaseLines / fs.totalLines)
+          : 0;
+        stats = `<span title="Total: ${fs.totalLines}  Clean: ${fs.cleanBaseLines}  Replaced: ${fs.replacedLines}  Unfixable: ${fs.unfixableLines}">
+                   ${cleanPct}% clean (${fs.replacedLines} replaced)
+                 </span>`;
+      } catch { stats = 'parse error'; }
+    }
+    return `<tr>
+      <td>${escHtml(img.tag || '')}</td>
+      <td>${badge}</td>
+      <td>${fmtDateTime(img.savedDate)}</td>
+      <td>${escHtml(img.savedByProviderId || '—')}</td>
+      <td>${stats}</td>
+    </tr>`;
+  }
+
+  function sourceBadge(type) {
+    if (!type) return '<span class="source-badge src-manual">—</span>';
+    if (type === 'Scan Filter')     return `<span class="source-badge src-scan">${escHtml(type)}</span>`;
+    if (type === 'Cardiac Gating')  return `<span class="source-badge src-gated">${escHtml(type)}</span>`;
+    return `<span class="source-badge src-manual">${escHtml(type)}</span>`;
+  }
+
+  // ── Utilities ─────────────────────────────────────────────────────────────
+  function fmtDate(v)     { return v ? new Date(v).toLocaleDateString()  : '—'; }
+  function fmtDateTime(v) { return v ? new Date(v).toLocaleString()      : '—'; }
+  function setStatus(msg) { document.getElementById('status-bar').textContent = msg; }
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+</script>
+</body>
+</html>
