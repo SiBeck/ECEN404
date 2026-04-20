@@ -65,6 +65,21 @@ namespace MedicalImagingAPI.Services
                     Role = UserRole.Admin,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
+                },
+                // Service account used by PatientPortal for server-to-server calls.
+                // Password is set via BioMetrixDatabase:ServiceAccountPassword in
+                // PatientPortal appsettings; update here to match.
+                new User
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderId = "PORTAL_SVC",
+                    PasswordHash = passwordHasher.HashPassword("CHANGE_ME_IN_PRODUCTION"),
+                    FirstName = "Patient",
+                    LastName = "Portal Service",
+                    Email = "portal-svc@hospital.internal",
+                    Role = UserRole.Technician,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
                 }
             };
 

@@ -60,6 +60,24 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireAnyUser", policy => policy.RequireAuthenticatedUser());
 });
 
+// Allow PatientPortal and DesktopApp to reach this API.
+// Origins are read from configuration so production values can be set via
+// environment variables without code changes.
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? new[] { "https://localhost:7000", "http://localhost:5100" };
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("MedicalSystemPolicy", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -121,6 +139,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("MedicalSystemPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -8,6 +8,25 @@ using SeedDataNamespace = PatientPortal.Data.SeedData;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── BioMetrixDatabase integration ─────────────────────────────────────────────
+// Registers a typed HttpClient for BioMetrixDatabaseService. The client uses
+// a service-account JWT (obtained at first use) for server-to-server calls.
+// Set BioMetrixDatabase:BaseUrl in appsettings to point at the running API.
+builder.Services.AddHttpClient<IBioMetrixDatabaseService, BioMetrixDatabaseService>(client =>
+{
+    var baseUrl = builder.Configuration["BioMetrixDatabase:BaseUrl"] ?? "https://localhost:5001";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    // Allow self-signed certs in dev; enforce valid certs in production
+    ServerCertificateCustomValidationCallback =
+        builder.Environment.IsDevelopment()
+            ? HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            : null
+});
+
 // Add services
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
