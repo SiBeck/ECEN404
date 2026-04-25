@@ -2433,11 +2433,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\simon\\source\\repos\\403DesktopApp\\PatientPortal\\PatientPortal.csproj",
+      "projectUniqueName": "C:\\Users\\simon\\source\\repos\\SiBeck\\ECEN404\\404Repo\\PatientPortal\\PatientPortal.csproj",
       "projectName": "PatientPortal",
-      "projectPath": "C:\\Users\\simon\\source\\repos\\403DesktopApp\\PatientPortal\\PatientPortal.csproj",
+      "projectPath": "C:\\Users\\simon\\source\\repos\\SiBeck\\ECEN404\\404Repo\\PatientPortal\\PatientPortal.csproj",
       "packagesPath": "C:\\Users\\simon\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\simon\\source\\repos\\403DesktopApp\\PatientPortal\\obj\\",
+      "outputPath": "C:\\Users\\simon\\source\\repos\\SiBeck\\ECEN404\\404Repo\\PatientPortal\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

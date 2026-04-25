@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "BlQmI3kMOT8=",
+  "dgSpecHash": "lrS9z/o3Gk4=",
   "success": true,
-  "projectFilePath": "C:\\Users\\simon\\source\\repos\\403DesktopApp\\PatientPortal\\PatientPortal.csproj",
+  "projectFilePath": "C:\\Users\\simon\\source\\repos\\SiBeck\\ECEN404\\404Repo\\PatientPortal\\PatientPortal.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\simon\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\simon\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",

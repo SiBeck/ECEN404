@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "..\\BioMetrixDatabase.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

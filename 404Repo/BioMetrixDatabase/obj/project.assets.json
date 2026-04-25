@@ -3623,11 +3623,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\simon\\source\\repos\\BioMetrixDatabase\\BioMetrixDatabase\\BioMetrixDatabase.csproj",
+      "projectUniqueName": "C:\\Users\\simon\\source\\repos\\SiBeck\\ECEN404\\404Repo\\BioMetrixDatabase\\BioMetrixDatabase.csproj",
       "projectName": "BioMetrixDatabase",
-      "projectPath": "C:\\Users\\simon\\source\\repos\\BioMetrixDatabase\\BioMetrixDatabase\\BioMetrixDatabase.csproj",
+      "projectPath": "C:\\Users\\simon\\source\\repos\\SiBeck\\ECEN404\\404Repo\\BioMetrixDatabase\\BioMetrixDatabase.csproj",
       "packagesPath": "C:\\Users\\simon\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\simon\\source\\repos\\BioMetrixDatabase\\BioMetrixDatabase\\obj\\",
+      "outputPath": "C:\\Users\\simon\\source\\repos\\SiBeck\\ECEN404\\404Repo\\BioMetrixDatabase\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
